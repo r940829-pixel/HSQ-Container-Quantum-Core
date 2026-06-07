@@ -48,6 +48,6 @@ python deploy_orchestrator.py
 Once the backend container matrix is active (successfully locking loopback allocation ports starting from Port 5011 onwards), open a separate shell and execute the master runtime control script to drive quantum gate injection and track step-by-step evolution:
 python random_walk.py
 3. Generate High-Contrast 2D Topological Analytics
-To render the publication-ready evolution_circular_battle.gif without tampering with the isolated runtime containers, execute the non-destructive analytics script:
+To render the publication-ready it without tampering with the isolated runtime containers, execute the non-destructive analytics script:
 python capture_evolution_gif.py
 This tool will seamlessly assemble a high-contrast scientific asset: evolution_circular_battle.gif tracking macro topological phase shifts.
