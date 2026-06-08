@@ -26,7 +26,7 @@ class RemoteQubitWalker:
             # Aligned with the newly added unified /instruction protocol gateway
             requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=1.0)
         except Exception:
-            # Fallback fallback routine for legacy path patterns
+            # Fallback routine for legacy path patterns
             try:
                 requests.post(f"{self.url}/gate/h", timeout=1.0)
             except Exception:
@@ -80,7 +80,7 @@ class RemoteQubitWalker:
 if __name__ == "__main__":
     print("[System Status] Synchronizing loopback endpoints with active microservice nodes...")
     
-    # 🟢 CRITICAL PORT CORRECTION: Rigorously aligned with deploy_orchestrator.py channel mapping
+    # CRITICAL PORT CORRECTION: Rigorously aligned with deploy_orchestrator.py channel mapping
     hsq_walker = RemoteQubitWalker(5011, "HSQ Protective Qubit Cluster Node")
     slwe_walker = RemoteQubitWalker(5012, "SLWE Reference Baseline Engine Node")
     
@@ -108,11 +108,27 @@ if __name__ == "__main__":
     plt.figure(figsize=(10, 5))
     plt.plot(x_hsq, y_hsq, 'g-', label='HSQ Architecture (Active Gauge Metric Protection)', linewidth=2.5)
     plt.plot(x_slwe, y_slwe, 'r--', label='SLWE Benchmark Framework (Unconstrained Linear Wave)', linewidth=2)
-    plt.title(f'Quantum Random Walk Spatial Spatial Manifestation Profile (Phase Noise: {noise_level*100}%)', fontsize=12, fontweight='bold')
+    plt.title(f'Quantum Random Walk Spatial Manifestation Profile (Phase Noise: {noise_level*100}%)', fontsize=12, fontweight='bold')
     plt.xlabel('Spatial Grid Position Mesh Coordinate (x)', fontsize=10)
     plt.ylabel('Macro Probability Density Distribution Density P(x)', fontsize=10)
     plt.grid(True, linestyle=':')
     plt.legend(loc='upper right')
     
-    print("🏆 [Pipeline Succeeded] Vector chart rendered seamlessly. Output stream redirected to UI layer.")
+    # 🟢 核心功能增補：自動儲存為期刊投稿規格之高品質圖表檔案
+    output_png = "qrw_spatial_contrast_profile.png"
+    output_pdf = "qrw_spatial_contrast_profile.pdf"
+    
+    try:
+        # 1. 儲存高解析度 PNG 供 Word 論文直接插入 (300 DPI 出版級標準)
+        plt.savefig(output_png, dpi=300, bbox_inches='tight')
+        # 2. 同步儲存為無限放大不失真的 PDF 向量圖檔 (IEEE 期刊論文定稿最愛)
+        plt.savefig(output_pdf, bbox_inches='tight')
+        
+        print(f"\n💾 [Export Success] Publication-grade charts saved successfully:")
+        print(f"  📂 Raster Image (PNG): {output_png} (300 DPI)")
+        print(f"  📂 Vector Graphics (PDF): {output_pdf}")
+    except Exception as e:
+        print(f"\n❌ Chart export failed: {e}")
+        
+    print("\n🏆 [Pipeline Succeeded] Vector chart rendered seamlessly. Output stream redirected to UI layer.")
     plt.show()
