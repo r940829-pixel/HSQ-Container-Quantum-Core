@@ -1,0 +1,19 @@
+cd /mnt/c/Users/"username"/Desktop/HSQ-Project/hsq_backend
+sudo docker rm -f hsq_core
+sudo docker build --pull=false -t hsq_core:latest .
+sudo docker run -d --gpus all -p 5011:5000 --name hsq_core hsq-final:latest
+___________________________________________________________________________
+sudo docker restart hsq_core
+___________________________________________________________________________
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+sudo systemctl restart docker
+___________________________________________________________________________
