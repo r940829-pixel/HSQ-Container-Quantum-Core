@@ -1,3 +1,5 @@
+import os
+import redis
 import numpy as np
 from flask import Flask, request, jsonify
 
@@ -15,6 +17,21 @@ except ImportError:
     HAS_GPU = False
 
 app = Flask(__name__)
+
+# ==============================================================================
+# VIRTUAL TENSOR-CHANNEL SWITCH CONNECTION (SIDE-CHANNEL IPC)
+# Establishes connection to the Redis bus injected by deploy_orchestrator.py
+# ==============================================================================
+TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
+try:
+    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=6379, db=0, decode_responses=True)
+    tensor_bus.ping()
+    BUS_CONNECTED = True
+    print(f"🔗 [Tensor Bus] Successfully bound to Virtual Switch at {TENSOR_BUS_HOST}:6379")
+except redis.ConnectionError:
+    tensor_bus = None
+    BUS_CONNECTED = False
+    print("⚠️ [Tensor Bus] Virtual Switch not detected. Operating in strictly isolated mode.")
 
 # ==============================================================================
 # MICROSCOPIC PHYSICS ENGINE SERVICE
@@ -79,6 +96,27 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.k_delta += noise  # Accumulate into the environmental wave-number spectrum
         self.enforce_gauge_protection()
 
+    def extract_topological_metric(self):
+        """
+        Extracts the localized probability weight of the spin-up component.
+        This metric will act as the control variable broadcasted across the Tensor Bus.
+        """
+        weight_a = float(np.abs(self.a)**2)
+        total_w = weight_a + float(np.abs(self.b)**2) + 1e-9
+        return weight_a / total_w
+
+    def apply_conditional_entanglement_phase(self, control_metric):
+        """
+        [Non-local Phase Interweaving]
+        Applies a phase shift strictly proportional to the non-local control metric.
+        This mathematically synthesizes a Distributed Continuous CNOT / CPhase gate.
+        """
+        # phase_shift ranges from 0 to Pi depending on the state of the control node
+        phase_shift = np.pi * control_metric
+        self.phi += phase_shift
+        self.b = self.b * np.exp(1j * phase_shift)
+        self.enforce_gauge_protection()
+
     def compute_current_xi(self, t=1.0):
         """ 
         Solve the continuous spatiotemporal partial differential equation on the 
@@ -87,13 +125,12 @@ class HilbertSpaceSpinorQuasiparticleService:
         x_grid = xp.linspace(-20, 20, 500)
         
         # 1. Extract pure real scalar weights from the microscopic spinor register
-        # preventing phase contamination and catastrophic index divergence.
         weight_a = float(np.abs(self.a)**2)
         weight_b = float(np.abs(self.b)**2)
         w_total = weight_a + weight_b + 1e-9
         w_a, w_b = weight_a / w_total, weight_b / w_total
         
-        # 2. Compute the spatiotemporal Gaussian envelope incorporating diffusion mechanisms
+        # 2. Compute the spatiotemporal Gaussian envelope
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
         envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
@@ -117,7 +154,6 @@ class HilbertSpaceSpinorQuasiparticleService:
             return [float(v) for v in cp.asnumpy(prob).flatten()]
         return [float(v) for v in prob.flatten()]
 
-
 # Instantiate the cloud-native virtualized qubit chip service daemon
 hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 
@@ -131,16 +167,17 @@ def route_ping():
     return jsonify({
         "status": "ready",
         "device": "NVIDIA GeForce GPU Acceleration Node" if HAS_GPU else "CPU Simulation Mode",
-        "cuda_accelerated": HAS_GPU
+        "cuda_accelerated": HAS_GPU,
+        "tensor_bus_active": BUS_CONNECTED
     })
 
-# 🟢 增加關鍵協定：完美對齊前端調度器的 Qiskit 風格通用通用邏輯閘整合接口
 @app.route('/instruction', methods=['POST'])
 def route_instruction():
     """ Unified gate orchestration gateway mimicking Qiskit controller behaviors """
     data = request.get_json(silent=True) or {}
     gate_name = data.get("gate", "").lower()
     
+    # 1. Local Hadamard Gate
     if gate_name == "h" or gate_name == "hadamard":
         hsq_qubit.apply_hadamard_gate()
         return jsonify({
@@ -149,6 +186,8 @@ def route_instruction():
             "a_magnitude": float(np.abs(hsq_qubit.a)), 
             "b_magnitude": float(np.abs(hsq_qubit.b))
         })
+        
+    # 2. Local Phase Gate
     elif gate_name == "phase" or gate_name == "p":
         delta_phi = float(data.get("delta_phi", 0.0))
         hsq_qubit.apply_phase_rotation_gate(delta_phi)
@@ -157,39 +196,43 @@ def route_instruction():
             "gate": "Phase Rotation",
             "phi": float(hsq_qubit.phi)
         })
+        
+    # 🟢 3. [Distributed Protocol] Export Tensor Metric (Control Qubit)
+    elif gate_name == "export_tensor_metric":
+        bus_key = data.get("bus_key")
+        if not bus_key or not BUS_CONNECTED:
+            return jsonify({"status": "error", "msg": "Missing bus_key or Tensor Bus disconnected"}), 400
+        
+        metric_val = hsq_qubit.extract_topological_metric()
+        tensor_bus.set(bus_key, str(metric_val))
+        return jsonify({
+            "status": "success",
+            "gate": "Export Tensor Metric",
+            "exported_metric": metric_val
+        })
+
+    # 🟢 4. [Distributed Protocol] Apply Conditional Phase (Target Qubit)
+    elif gate_name == "apply_conditional_phase":
+        source_bus_key = data.get("source_bus_key")
+        if not source_bus_key or not BUS_CONNECTED:
+            return jsonify({"status": "error", "msg": "Missing source_bus_key or Tensor Bus disconnected"}), 400
+            
+        control_metric_str = tensor_bus.get(source_bus_key)
+        if control_metric_str is None:
+            return jsonify({"status": "error", "msg": f"Metric {source_bus_key} not found on Tensor Bus"}), 404
+            
+        control_metric = float(control_metric_str)
+        hsq_qubit.apply_conditional_entanglement_phase(control_metric)
+        
+        return jsonify({
+            "status": "success",
+            "gate": "Conditional Phase Intersection",
+            "applied_phase_shift": float(np.pi * control_metric),
+            "a_magnitude": float(np.abs(hsq_qubit.a)),
+            "b_magnitude": float(np.abs(hsq_qubit.b))
+        })
+
     return jsonify({"status": "error", "msg": f"Gate instruction '{gate_name}' not natively supported"}), 400
-
-@app.route('/gate/h', methods=['POST'])
-def route_gate_h_legacy():
-    """ Legacy backward-compatibility endpoint for individual Hadamard trigger """
-    hsq_qubit.apply_hadamard_gate()
-    return jsonify({"msg": "Hadamard gate applied successfully", "a": float(np.abs(hsq_qubit.a)), "b": float(np.abs(hsq_qubit.b))})
-
-@app.route('/gate/phase', methods=['POST'])
-def route_gate_phase_legacy():
-    """ Legacy backward-compatibility endpoint for individual Phase rotation """
-    data = request.json or {}
-    delta_phi = data.get('delta_phi', 0.0)
-    hsq_qubit.apply_phase_rotation_gate(delta_phi)
-    return jsonify({"msg": "Phase rotation applied successfully", "phi": float(hsq_qubit.phi)})
-
-@app.route('/noise/inject', methods=['POST'])
-def route_noise_inject():
-    """ Manual noise injection endpoint to simulate targeted phase damping stress tests """
-    data = request.json or {}
-    noise_level = data.get('noise_level', 0.1)
-    hsq_qubit.inject_phase_damping(noise_level)
-    return jsonify({"msg": "Phase damping noise injected successfully", "current_k_delta": float(hsq_qubit.k_delta)})
-
-@app.route('/measure/coherence', methods=['GET'])
-def route_measure_coherence():
-    """ Query real-time quantum coherence value and monitor gauge metric integrity """
-    coherence_value = float(np.abs(hsq_qubit.a * np.conj(hsq_qubit.b)))
-    gauge_check = float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2)
-    return jsonify({
-        "coherence": coherence_value,
-        "gauge_metric_integrity": gauge_check
-    })
 
 @app.route('/evolve', methods=['POST', 'GET'])
 def route_evolve():
@@ -206,16 +249,40 @@ def route_evolve():
     if noise_level > 0:
         hsq_qubit.inject_phase_damping(noise_level)
         
-    # Solve for the 500-point spatiotemporal macro probability density distribution
     prob_dist = hsq_qubit.compute_current_xi(t=t)
     
-    # Return JSON structure mapped to the key value expected by frontend: "probability_density"
     return jsonify({
         "status": "evolved",
         "t_final": t,
         "gauge_metric_integrity": float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2),
         "probability_density": prob_dist
     })
+
+# (Legacy routes /gate/h, /gate/phase, /noise/inject, /measure/coherence are kept identical...)
+@app.route('/gate/h', methods=['POST'])
+def route_gate_h_legacy():
+    hsq_qubit.apply_hadamard_gate()
+    return jsonify({"msg": "Hadamard gate applied successfully", "a": float(np.abs(hsq_qubit.a)), "b": float(np.abs(hsq_qubit.b))})
+
+@app.route('/gate/phase', methods=['POST'])
+def route_gate_phase_legacy():
+    data = request.json or {}
+    delta_phi = data.get('delta_phi', 0.0)
+    hsq_qubit.apply_phase_rotation_gate(delta_phi)
+    return jsonify({"msg": "Phase rotation applied successfully", "phi": float(hsq_qubit.phi)})
+
+@app.route('/noise/inject', methods=['POST'])
+def route_noise_inject():
+    data = request.json or {}
+    noise_level = data.get('noise_level', 0.1)
+    hsq_qubit.inject_phase_damping(noise_level)
+    return jsonify({"msg": "Phase damping noise injected successfully", "current_k_delta": float(hsq_qubit.k_delta)})
+
+@app.route('/measure/coherence', methods=['GET'])
+def route_measure_coherence():
+    coherence_value = float(np.abs(hsq_qubit.a * np.conj(hsq_qubit.b)))
+    gauge_check = float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2)
+    return jsonify({"coherence": coherence_value, "gauge_metric_integrity": gauge_check})
 
 if __name__ == "__main__":
     print(f"=== [HSQ Verified Core Microservice] Initialization Successful | Listening on Port 5000 ===")
