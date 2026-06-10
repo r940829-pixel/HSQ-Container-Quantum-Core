@@ -27,10 +27,11 @@ RUN apt-get update && apt-get install -y \
 # ==============================================================================
 # SCIENTIFIC & CLOUD-NATIVE STACK INSTALLATION
 # Provisioning scientific computing layers (NumPy), GPU-accelerated parallel 
-# matrix engines (CuPy explicitly compiled for CUDA 11.x platforms), and the 
-# microservice Restful communication tier (Flask) inside the isolated container layer.
+# matrix engines (CuPy explicitly compiled for CUDA 11.x platforms), the 
+# microservice Restful communication tier (Flask), and the Redis client driver
+# for cross-container non-local tensor channel side-talk.
 # ==============================================================================
-RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask
+RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask redis
 
 # ==============================================================================
 # CONTAINER ENVIRONMENT ANCHORING
