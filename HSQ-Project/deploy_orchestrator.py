@@ -26,7 +26,7 @@ def clean_environment(clean_hsq=True, clean_slwe=True):
         subprocess.run("sudo docker rm -f $(sudo docker ps -a -q --filter name=hsq_core_cluster_)", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run("sudo docker rm -f hsq_core_cluster_*", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # [架構升級] 同步清洗 Redis 虛擬量子張量交換機
+        # [Architecture Upgrade] Synchronous purging of Redis Virtual Quantum Tensor Switch
         print(" -> Purging Virtual Quantum Tensor Exchange Bus (Redis)...")
         subprocess.run("sudo docker rm -f hsq_tensor_bus", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
@@ -86,10 +86,10 @@ def quick_deploy_network():
     # 3. DYNAMIC CONTAINER ARCHITECTURE PROVISIONING (HSQ LAYER - GPU PASSTHROUGH)
     # ==========================================================================
     
-    # [架構升級 Channel 0] 啟動虛擬量子張量交換機 (Redis Entanglement Bus)
+    # [Architecture Upgrade - Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)
     if deploy_hsq and n_qubits > 1:
         print("\n[Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)...")
-        # 啟動輕量級 Redis 容器作為跨節點資訊交換中樞
+        # Launch lightweight Redis container as cross-node information exchange hub
         redis_cmd = "sudo docker run -d --name hsq_tensor_bus -p 6379:6379 redis:alpine"
         subprocess.run(redis_cmd, shell=True, stdout=subprocess.DEVNULL)
         print("🚀 [Tensor Bus Active] Non-local information exchange channel established on Port 6379.")
@@ -99,7 +99,7 @@ def quick_deploy_network():
         hsq_base_port = 5011
         for i in range(n_qubits):
             current_port = hsq_base_port + i
-            # [架構升級] 注入拓撲 ID 與交換機位址環境變數，並強制解析 host.docker.internal
+            # [Architecture Upgrade] Inject Topology ID & Switch Address ENV vars, forcing host.docker.internal resolution
             docker_cmd = (
                 f"sudo docker run -d "
                 f"--name hsq_core_cluster_{i} "
@@ -119,7 +119,7 @@ def quick_deploy_network():
     # ==========================================================================
     if deploy_slwe:
         print("\n[Channel 2] Orchestrating the classical multi-qubit linear baseline SLWE engine context...")
-        # [架構升級] 將 SLWE 埠口從 5012 移至 6000，徹底解決 N>=2 時與 HSQ 叢集的埠口衝突！
+        # [Architecture Upgrade] Relocate SLWE port from 5012 to 6000 to completely resolve port collisions with HSQ clusters when N>=2
         slwe_port = 6000 
         try:
             slwe_process = subprocess.Popen(
