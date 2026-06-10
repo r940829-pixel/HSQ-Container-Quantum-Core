@@ -114,14 +114,11 @@ if __name__ == "__main__":
     plt.grid(True, linestyle=':')
     plt.legend(loc='upper right')
     
-    # 🟢 核心功能增補：自動儲存為期刊投稿規格之高品質圖表檔案
     output_png = "qrw_spatial_contrast_profile.png"
     output_pdf = "qrw_spatial_contrast_profile.pdf"
     
     try:
-        # 1. 儲存高解析度 PNG 供 Word 論文直接插入 (300 DPI 出版級標準)
         plt.savefig(output_png, dpi=300, bbox_inches='tight')
-        # 2. 同步儲存為無限放大不失真的 PDF 向量圖檔 (IEEE 期刊論文定稿最愛)
         plt.savefig(output_pdf, bbox_inches='tight')
         
         print(f"\n💾 [Export Success] Publication-grade charts saved successfully:")
