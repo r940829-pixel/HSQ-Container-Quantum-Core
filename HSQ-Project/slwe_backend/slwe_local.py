@@ -94,7 +94,7 @@ class DocumentBasedSLWEEngine:
 slwe_engine = None
 
 # ==============================================================================
-# RESTFUL API ENDPOINTS & INTER異質 GATEWAY ARCHITECTURE
+# RESTFUL API ENDPOINTS 
 # ==============================================================================
 
 @app.route('/instruction', methods=['POST'])
@@ -110,7 +110,6 @@ def route_instruction():
         return jsonify({"status": "success", "msg": "Global SLWE Hadamard transformation completed"})
     return jsonify({"status": "error", "msg": f"Gate operation '{gate_name}' not supported by SLWE platform"}), 400
 
-# 🟢 新增備援路由：完美接收前端 Client 降級重試之專用端點
 @app.route('/gate/h', methods=['POST'])
 def route_gate_h_legacy():
     """ Backward-compatible endpoint to intercept individual fallback Hadamard calls """
