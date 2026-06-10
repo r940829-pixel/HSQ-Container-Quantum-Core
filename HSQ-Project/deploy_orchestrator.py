@@ -1,5 +1,6 @@
 # ==============================================================================
 # CONTAINER-NATIVE DEVOPS CLUSTER ORCHESTRATOR & ENVIRONMENT SANITIZER
+# (Upgraded: Tensor-Channel IPC & Global Sync Barrier Ready)
 # This script orchestrates the unified lifecycle of the simulation architecture.
 # It enforces zero-tolerance hardware sanitization, purges lingering zombie 
 # containers, releases bound OS communication ports, and dynamically scales 
@@ -19,17 +20,19 @@ def clean_environment(clean_hsq=True, clean_slwe=True):
     """
     print("\n[Sanitization] Initiating global hardware self-healing and purging lingering paths...")
     
-    # 1. Purge HSQ WSL2 Docker Clusters via native Linux engine interactions
+    # 1. Purge HSQ WSL2 Docker Clusters & Virtual Tensor Bus
     if clean_hsq:
         print(" -> Forcibly evicting dangling HSQ Docker cluster containers from the runtime layer...")
-        # Evict all active/inactive containers matching the cluster prefix filter pattern
         subprocess.run("sudo docker rm -f $(sudo docker ps -a -q --filter name=hsq_core_cluster_)", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run("sudo docker rm -f hsq_core_cluster_*", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # [架構升級] 同步清洗 Redis 虛擬量子張量交換機
+        print(" -> Purging Virtual Quantum Tensor Exchange Bus (Redis)...")
+        subprocess.run("sudo docker rm -f hsq_tensor_bus", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
     # 2. Terminate SLWE Background Emulation Daemons
     if clean_slwe:
         print(" -> Terminating historical SLWE continuous wave engine daemon processes...")
-        # Cross-platform orchestration mapping: Intercept host architecture characteristics
         if sys.platform == "win32":
             kill_cmd = 'wmic process where "commandline like \'%slwe_local.py%\'" get processid /format:list'
             try:
@@ -41,14 +44,13 @@ def clean_environment(clean_hsq=True, clean_slwe=True):
             except Exception:
                 pass
         else:
-            # Native Linux/WSL2 process signature pattern termination operator
             subprocess.run("pkill -f slwe_local.py", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     print("🏆 [Sanitization Complete] Communication loopback registers and interface ports are fully unsealed.")
 
 def quick_deploy_network():
     print("====================================================")
-    print("===   HSQ & SLWE Framework: Cluster Orchestrator  ===")
+    print("===   HSQ & SLWE Framework: Cluster Orchestrator   ===")
     print("====================================================")
     
     # 1. Interactive Pipeline Mode Selector Gateway Interface
@@ -83,16 +85,28 @@ def quick_deploy_network():
     # ==========================================================================
     # 3. DYNAMIC CONTAINER ARCHITECTURE PROVISIONING (HSQ LAYER - GPU PASSTHROUGH)
     # ==========================================================================
+    
+    # [架構升級 Channel 0] 啟動虛擬量子張量交換機 (Redis Entanglement Bus)
+    if deploy_hsq and n_qubits > 1:
+        print("\n[Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)...")
+        # 啟動輕量級 Redis 容器作為跨節點資訊交換中樞
+        redis_cmd = "sudo docker run -d --name hsq_tensor_bus -p 6379:6379 redis:alpine"
+        subprocess.run(redis_cmd, shell=True, stdout=subprocess.DEVNULL)
+        print("🚀 [Tensor Bus Active] Non-local information exchange channel established on Port 6379.")
+
     if deploy_hsq:
         print("\n[Channel 1] Provisioning localized container-native HSQ secure topological qubit cluster nodes...")
         hsq_base_port = 5011
         for i in range(n_qubits):
             current_port = hsq_base_port + i
-            # Construct hardware manifest instruction utilizing strict native Linux/WSL2 engine commands
+            # [架構升級] 注入拓撲 ID 與交換機位址環境變數，並強制解析 host.docker.internal
             docker_cmd = (
                 f"sudo docker run -d "
                 f"--name hsq_core_cluster_{i} "
                 f"--gpus all "
+                f"--add-host=host.docker.internal:host-gateway "
+                f"-e TENSOR_BUS_HOST=host.docker.internal "
+                f"-e QUBIT_NODE_ID={i} "
                 f"-p {current_port}:5000 "
                 f"hsq_core:latest"
             )
@@ -105,7 +119,8 @@ def quick_deploy_network():
     # ==========================================================================
     if deploy_slwe:
         print("\n[Channel 2] Orchestrating the classical multi-qubit linear baseline SLWE engine context...")
-        slwe_port = 5012
+        # [架構升級] 將 SLWE 埠口從 5012 移至 6000，徹底解決 N>=2 時與 HSQ 叢集的埠口衝突！
+        slwe_port = 6000 
         try:
             slwe_process = subprocess.Popen(
                 [sys.executable, "slwe_local.py"],
@@ -114,7 +129,6 @@ def quick_deploy_network():
                 stderr=subprocess.PIPE,
                 text=True
             )
-            # Automate cross-process initialization configuration stream injection
             slwe_process.stdin.write(f"{n_qubits}\n")
             slwe_process.stdin.flush()
             print(f" -> SLWE microservice daemon initialized safely (Successfully locked interface Port: {slwe_port})")
