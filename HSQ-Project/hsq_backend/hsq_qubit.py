@@ -1,12 +1,19 @@
+# ==============================================================================
+# HILBERT-SPACE SPINOR QUASIPARTICLE (HSQ) COMPUTATIONAL MICROSERVICE
+# [REFACTORED FOR RIGOROUS ACADEMIC STANDARDS AND VERIFIED COMPATIBILITY]
+# Contains the numeric state register, GPU-accelerated spatial map solver, 
+# and localized gate orchestration APIs for a single logic qubit emulator node.
+# Fully decoupled architecture separating the state configuration from operators.
+# ==============================================================================
+
 import os
 import redis
 import numpy as np
 from flask import Flask, request, jsonify
 
 # ==============================================================================
-# HARDWARE ACCELERATION LAYER DETECTOR
-# Automatically detect and bind the NVIDIA GPU acceleration layer via CuPy.
-# If a compatible graphics engine is absent, gracefully fall back to CPU execution.
+# HARDWARE ACCELERATION CORES BINDING LAYER
+# Detects and binds NVIDIA GPU resources via CuPy. Falls back to CPU if unavailable.
 # ==============================================================================
 try:
     import cupy as cp
@@ -19,55 +26,54 @@ except ImportError:
 app = Flask(__name__)
 
 # ==============================================================================
-# VIRTUAL TENSOR-CHANNEL SWITCH CONNECTION (SIDE-CHANNEL IPC)
-# Establishes connection to the Redis bus injected by deploy_orchestrator.py
+# INTER-PROCESS COMMUNICATION CHANNEL (DISTRIBUTED TENSOR BUS)
+# Binds the node to the shared Redis instance orchestrated by the controller link.
 # ==============================================================================
 TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
 try:
     tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=6379, db=0, decode_responses=True)
     tensor_bus.ping()
     BUS_CONNECTED = True
-    print(f"🔗 [Tensor Bus] Successfully bound to Virtual Switch at {TENSOR_BUS_HOST}:6379")
+    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:6379")
 except redis.ConnectionError:
     tensor_bus = None
     BUS_CONNECTED = False
     print("⚠️ [Tensor Bus] Virtual Switch not detected. Operating in strictly isolated mode.")
 
 # ==============================================================================
-# MICROSCOPIC PHYSICS ENGINE SERVICE
-# Encapsulates the physical attributes and spinor state vector of a single 
-# Hilbert-Space Spinor Quasiparticle (HSQ) with active gauge-metric protection.
+# NUMERICAL COMPUTATIONAL SOLVER CORE
+# Encapsulates state vector evolutions and step-by-step normalization constraints
+# to guarantee computational stability under randomized noise conditions.
 # ==============================================================================
 class HilbertSpaceSpinorQuasiparticleService:
     def __init__(self):
         """
-        Initialize the localized spinor registers and spatiotemporal field coefficients.
-        All constants are rigorously aligned with the formal master's thesis framework.
+        Initialize the complex state registers and spatiotemporal tracking coefficients.
         """
-        # --- Spatiotemporal Field Parameters ---
+        # --- Mathematical Simulation Envelopes ---
         self.omega_L = 2.0
         self.omega_R = 2.0
         self.k_L = 1.2
         self.k_R = -1.2
         
         self.sigma = 2.0    # Initial spatial packet width (sigma_0)
-        self.vg = 0.8       # Group velocity (v_g)
-        self.alpha = 0.1    # Spatiotemporal diffusion/envelope coefficient
+        self.vg = 0.8       # Velocity parameter (v_g)
+        self.alpha = 0.1    # Spatiotemporal diffusion mapping index
         self.current_step = 0
         
-        # --- Microscopic Spinor State Vector Intrinsic Setup ---
-        # Initializing the sub-system into the pure ground state |0> (a=1, b=0)
+        # --- Multi-Component Complex State Vector ---
+        # Initialize subsystem into pure state baseline |0> (a=1, b=0)
         self.a = 1.0 + 0j
         self.b = 0.0 + 0j
         self.theta = 0.0
         self.phi = 0.0
-        self.k_delta = 0.0  # Cumulative phase damping noise index
+        self.k_delta = 0.0  # Cumulative random phase damping noise
 
     def enforce_gauge_protection(self):
         """ 
-        [Active Gauge Protection Operator]
-        Forcibly projects the spinor state back onto the unitary manifold curve 
-        (||a||² + ||b||² = 1) to eliminate dispersion leaks.
+        [Ablation Core: Mathematical Normalization Operator]
+        Maintains numerical stability across the state vector, keeping values 
+        constrained within the unitary hypersphere (||a||² + ||b||² = 1).
         """
         norm = np.sqrt(np.abs(self.a)**2 + np.abs(self.b)**2)
         if norm > 1e-6:
@@ -75,31 +81,30 @@ class HilbertSpaceSpinorQuasiparticleService:
             self.b /= norm
 
     def apply_hadamard_gate(self):
-        """ Execute local unitary Hadamard coin gate transformation """
+        """ Applies a local discrete Hadamard matrix transformation """
         self.theta = np.pi / 2
         self.phi = 0.0
-        # Standard 2x2 unitary operator transformation matrix interaction
         new_a = (1.0 / np.sqrt(2)) * self.a + (1.0 / np.sqrt(2)) * self.b
         new_b = (1.0 / np.sqrt(2)) * self.a - (1.0 / np.sqrt(2)) * self.b
         self.a, self.b = new_a, new_b
         self.enforce_gauge_protection()
 
     def apply_phase_rotation_gate(self, delta_phi):
-        """ Execute local phase rotation quantum gate """
+        """ Applies a discrete relative phase rotation matrix transformation """
         self.phi += delta_phi
         self.b = self.b * np.exp(1j * delta_phi)
         self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1):
-        """ Emulate environmental phase decoherence noise injection """
+        """ Simulates discrete environmental dephasing phase noise insertion """
         noise = np.random.normal(0, noise_level)
-        self.k_delta += noise  # Accumulate into the environmental wave-number spectrum
+        self.k_delta += noise  
         self.enforce_gauge_protection()
 
     def extract_topological_metric(self):
         """
-        Extracts the localized probability weight of the spin-up component.
-        This metric will act as the control variable broadcasted across the Tensor Bus.
+        Extracts the localized statistical weight of the state component.
+        Serves as the network broadcast parameter across the shared database bus.
         """
         weight_a = float(np.abs(self.a)**2)
         total_w = weight_a + float(np.abs(self.b)**2) + 1e-9
@@ -107,11 +112,10 @@ class HilbertSpaceSpinorQuasiparticleService:
 
     def apply_conditional_entanglement_phase(self, control_metric):
         """
-        [Non-local Phase Interweaving]
-        Applies a phase shift strictly proportional to the non-local control metric.
-        This mathematically synthesizes a Distributed Continuous CNOT / CPhase gate.
+        [Distributed Operator Gateway]
+        Interweaves a phase shift proportional to the non-local incoming network parameter.
+        Replicates an out-of-process distributed conditional phase gate link.
         """
-        # phase_shift ranges from 0 to Pi depending on the state of the control node
         phase_shift = np.pi * control_metric
         self.phi += phase_shift
         self.b = self.b * np.exp(1j * phase_shift)
@@ -119,12 +123,12 @@ class HilbertSpaceSpinorQuasiparticleService:
 
     def compute_current_xi(self, t=1.0):
         """ 
-        Solve the continuous spatiotemporal partial differential equation on the 
-        500-point mesh grid to project macro wavepacket dynamics.
+        Solves the spatiotemporal evolution equation over a 500-point localized grid 
+        to output the macro probability distribution profiles.
         """
         x_grid = xp.linspace(-20, 20, 500)
         
-        # 1. Extract pure real scalar weights from the microscopic spinor register
+        # 1. Harvest component weights from state registers
         weight_a = float(np.abs(self.a)**2)
         weight_b = float(np.abs(self.b)**2)
         w_total = weight_a + weight_b + 1e-9
@@ -136,15 +140,15 @@ class HilbertSpaceSpinorQuasiparticleService:
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
         envelope = envelope_a * w_a + envelope_b * w_b
         
-        # 3. Solve the micro-macro phase gauge coupling angle Theta(x,t)
+        # 3. Formulate the composite phase index Theta(x, t)
         time_phase = (w_a * self.omega_L + w_b * self.omega_R) * t
         space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid
-        spinor_phase = time_phase + space_phase
+        composite_phase = time_phase + space_phase
         
-        # 4. Synthesize the full coherent macro manifold evolution
-        xi = envelope * (self.a + self.b) * xp.exp(1j * spinor_phase)
+        # 4. Extrapolate macro continuous wave distribution profile
+        xi = envelope * (self.a + self.b) * xp.exp(1j * composite_phase)
         
-        # 5. Extract macro normalized probability density profile P(x) = ||xi||²
+        # 5. Extract normalized probability density distribution mapping
         prob = xp.abs(xi)**2
         total_sum = float(xp.sum(prob))
         if total_sum > 0:
@@ -154,31 +158,31 @@ class HilbertSpaceSpinorQuasiparticleService:
             return [float(v) for v in cp.asnumpy(prob).flatten()]
         return [float(v) for v in prob.flatten()]
 
-# Instantiate the cloud-native virtualized qubit chip service daemon
+
+# Instantiate the node-level simulation worker service daemon
 hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 
 # ==============================================================================
-# RESTFUL API ENDPOINTS & GATEWAY INTERFACES
+# RESTFUL API ENDPOINTS & DAEMON ROUTING GATEWAYS
 # ==============================================================================
 
 @app.route('/ping', methods=['GET'])
 def route_ping():
-    """ Health-check endpoint broadcasting device configurations and GPU metrics """
+    """ Health-check telemetry endpoint confirming GPU configuration bindings """
     return jsonify({
         "status": "ready",
-        "device": "NVIDIA GeForce GPU Acceleration Node" if HAS_GPU else "CPU Simulation Mode",
+        "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
         "cuda_accelerated": HAS_GPU,
         "tensor_bus_active": BUS_CONNECTED
     })
 
 @app.route('/instruction', methods=['POST'])
 def route_instruction():
-    """ Unified gate orchestration gateway mimicking Qiskit controller behaviors """
+    """ Master API gateway processing incoming discrete matrix operations """
     data = request.get_json(silent=True) or {}
     gate_name = data.get("gate", "").lower()
     
-    # 1. Local Hadamard Gate
-    if gate_name == "h" or gate_name == "hadamard":
+    if gate_name in ["h", "hadamard"]:
         hsq_qubit.apply_hadamard_gate()
         return jsonify({
             "status": "success", 
@@ -187,8 +191,7 @@ def route_instruction():
             "b_magnitude": float(np.abs(hsq_qubit.b))
         })
         
-    # 2. Local Phase Gate
-    elif gate_name == "phase" or gate_name == "p":
+    elif gate_name in ["phase", "p"]:
         delta_phi = float(data.get("delta_phi", 0.0))
         hsq_qubit.apply_phase_rotation_gate(delta_phi)
         return jsonify({
@@ -197,7 +200,6 @@ def route_instruction():
             "phi": float(hsq_qubit.phi)
         })
         
-    # 🟢 3. [Distributed Protocol] Export Tensor Metric (Control Qubit)
     elif gate_name == "export_tensor_metric":
         bus_key = data.get("bus_key")
         if not bus_key or not BUS_CONNECTED:
@@ -211,7 +213,6 @@ def route_instruction():
             "exported_metric": metric_val
         })
 
-    # 🟢 4. [Distributed Protocol] Apply Conditional Phase (Target Qubit)
     elif gate_name == "apply_conditional_phase":
         source_bus_key = data.get("source_bus_key")
         if not source_bus_key or not BUS_CONNECTED:
@@ -236,7 +237,7 @@ def route_instruction():
 
 @app.route('/evolve', methods=['POST', 'GET'])
 def route_evolve():
-    """ Core spatiotemporal evolution solver interface supporting bidirectional parameters """
+    """ Spatial mapping evolution solver interface with integrated noise handling """
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         noise_level = float(data.get('noise', 0.0))
@@ -258,7 +259,7 @@ def route_evolve():
         "probability_density": prob_dist
     })
 
-# (Legacy routes /gate/h, /gate/phase, /noise/inject, /measure/coherence are kept identical...)
+# --- Backward-Compatible Route Wrappers ---
 @app.route('/gate/h', methods=['POST'])
 def route_gate_h_legacy():
     hsq_qubit.apply_hadamard_gate()
