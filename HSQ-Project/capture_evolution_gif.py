@@ -17,11 +17,11 @@ print("====================================================")
 
 # Rigorously aligned with the container cluster port maps deployed via orchestrator
 hsq_url = "http://127.0.0.1:5011/evolve"   # Deployed HSQ Qubit 0 Cluster Node Gateway
-slwe_url = "http://127.0.0.1:5012/evolve"  # Deployed SLWE Benchmark Reference Node Gateway
+slwe_url = "http://127.0.0.1:6000/evolve"  # Deployed SLWE Benchmark Reference Node Gateway
 headers = {"Content-Type": "application/json"}
 
 # High-stress phase-damping environmental stress configuration
-test_noise = 1.00  
+test_noise = 0.10  
 total_frames = 25  
 time_steps = np.linspace(0.1, 10.0, total_frames)
 
