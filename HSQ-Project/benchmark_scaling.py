@@ -20,7 +20,7 @@ def execute_live_hardware_stress_run():
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     
     # Define cluster node scaling layers matching the formal thesis specifications
-    scales = np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+    scales = np.array([10, 20, 40, 60, 80, 100, 140, 180, 200])
     
     cpu_means = []
     cpu_stds = []
