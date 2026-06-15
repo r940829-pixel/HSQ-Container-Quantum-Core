@@ -161,7 +161,6 @@ if __name__ == "__main__":
     # WP1 Absolute Requirement: Print clear scientific ablation metric verdict
     print("\n📝 [WP1 ABLATION VERDICT LINE FOR §VI-C]:")
     print("-------------------------------------------------------------------------------------------")
-    print("消融實驗結果表明，本研究系統之抗噪剛性有大約 33.7% 來自於步進式動態歸一化之數值約束補丁，\n而其餘 66.3% 則源於希爾伯特空間內核狀態與算符雙層解耦架構對么正記憶之非局域相干箝制。")
     print("-------------------------------------------------------------------------------------------")
 
     # Render formal manuscript table image via Matplotlib
