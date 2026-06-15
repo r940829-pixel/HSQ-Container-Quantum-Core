@@ -40,6 +40,10 @@ The platform employs a decoupled, cloud-native microservice topology to enforce 
 |  - CuPy-driven Parallelized Continuous Wavepacket Evolution     |
 |  - Unitary Conserved Manifold via Spinor-Momentum Constraint    |
 +-----------------------------------------------------------------+
+### Environment Dependencies
+Ensure your Python runtime environment has the required auditing libraries installed:
+```bash
+pip install requests numpy scipy matplotlib pillow
 📂 Manifest Mapping & Component Index
 deploy_orchestrator.py: Automated Ecosystem Purge & Cluster Orchestrator. Cleans defunct container clusters, wipes dangling registries, releases bound host OS communication ports, and dynamically scales up to N=100 isolated logical hardware nodes concurrently under native Linux/WSL2 environments.
 random_walk.py: Top-level Execution Controller & Driver. Orchestrates the unified runtime lifecycle across >= 20 independent random seeds. It broadcasts Hadamard coin gates, drives discrete spatiotemporal walk loops, and dynamically collects macro evolution probability streams via Restful endpoints.
