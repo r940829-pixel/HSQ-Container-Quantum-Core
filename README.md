@@ -18,6 +18,12 @@ The platform employs a decoupled, cloud-native microservice topology to enforce 
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
 pip install requests numpy scipy matplotlib pillow flask
+```
+#### remore all container
+To remore the container, enter the following command
+```bash
+sudo docker rm -f $(sudo docker ps -a -q)
+```
 
 ```text
 +-----------------------------------------------------------------+
