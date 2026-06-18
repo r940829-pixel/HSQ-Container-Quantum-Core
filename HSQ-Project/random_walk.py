@@ -144,7 +144,6 @@ if __name__ == "__main__":
     # ==============================================================================
     print("\n💾 FLOW STEP 2: SERIALIZING NPY STRUCTURES & RENDERING TABLE II...")
     
-    # 🌟 完整收割 A, B, C, D 所有二進位陣列數據
     np.save("config_A_seeds.npy", np.array(matrix_store["A"]))
     np.save("config_B_seeds.npy", np.array(matrix_store["B"]))
     np.save("config_C_seeds.npy", np.array(matrix_store["C"]))
@@ -207,25 +206,21 @@ if __name__ == "__main__":
     # ==============================================================================
     print("\n🎨 FLOW STEP 4: LOADING CACHED NPY DATA FOR ENSEMBLE ADVANCED PLOT (FIG 2)...")
     
-    # 🌟 實踐安吉的關鍵想法：現場打開剛剛儲存的 npy 數據
     data_A = np.load("config_A_seeds.npy")
     data_B = np.load("config_B_seeds.npy")
     data_C = np.load("config_C_seeds.npy")
     data_D = np.load("config_D_seeds.npy")
     
-    # 🌟 計算 A~D 全組態 20 顆種子的空間系綜平均分佈
     ensemble_A = np.mean(data_A, axis=0)
     ensemble_B = np.mean(data_B, axis=0)
     ensemble_C = np.mean(data_C, axis=0)
     ensemble_D = np.mean(data_D, axis=0)
     
-    # 🌟 恢復完美的 Qiskit 理論雙峰基線
     qiskit_ideal_twin_peaks = 0.5 * (np.exp(-(x_axis-8.5)**2/6.0) + np.exp(-(x_axis+8.5)**2/6.0))
     qiskit_ideal_twin_peaks /= qiskit_ideal_twin_peaks.sum()
     
     plt.figure(figsize=(10, 5.5))
     
-    # 🌟 A~D 全要素進圖：用清晰的線型與色彩呈現系統對照
     plt.plot(x_axis, qiskit_ideal_twin_peaks, 'k:', label='Qiskit Aer Analytical Ground Truth', linewidth=1.8, alpha=0.8)
     plt.plot(x_axis, ensemble_A, color='#E67E22', linestyle='-.', label='Ensemble Config A: Classical SLWE Baseline', linewidth=1.2)
     plt.plot(x_axis, ensemble_B, color='#E74C3C', linestyle='--', label='Ensemble Config B: Classical SLWE + Post-Patch', linewidth=1.5)
