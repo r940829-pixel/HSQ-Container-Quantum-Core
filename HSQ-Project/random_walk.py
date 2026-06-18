@@ -219,7 +219,7 @@ if __name__ == "__main__":
             cell.set_text_props(color='#222222')
             cell.set_height(0.32)
             
-    plt.title(TABLE II\nMulti-Seed Quantitative Parametric Robustness Evaluation Matrix\n(Isolated Sampling, Phase Noise: 10.0%)", fontsize=10, fontweight='bold', pad=10)
+    plt.title("TABLE II\nMulti-Seed Quantitative Parametric Robustness Evaluation Matrix\n(Isolated Sampling, Phase Noise: 10.0%)", fontsize=10, fontweight='bold', pad=10)
     plt.savefig("table_2_noise_stress.png", dpi=300, bbox_inches='tight')
     plt.close()
     print(" 💾 [Asset Exported] Grayscale TABLE II image generated: table_2_noise_stress.png")
