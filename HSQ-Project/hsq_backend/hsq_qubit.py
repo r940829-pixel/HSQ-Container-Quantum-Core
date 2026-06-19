@@ -166,6 +166,19 @@ hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 # RESTFUL API ENDPOINTS & DAEMON ROUTING GATEWAYS
 # ==============================================================================
 
+@app.route('/reset', methods=['POST'])
+def route_reset():
+    """ 🌟 [CRITICAL FIXED] 補齊重置清洗網關，洗淨複數暫存器，杜絕 404 與超時 """
+    global hsq_qubit
+    if hsq_qubit:
+        hsq_qubit.a = 1.0 + 0j
+        hsq_qubit.b = 0.0 + 0j
+        hsq_qubit.theta = 0.0
+        hsq_qubit.phi = 0.0
+        hsq_qubit.k_delta = 0.0
+        hsq_qubit.current_step = 0
+    return jsonify({"status": "success", "msg": "HSQ qubit register reset successfully"})
+
 @app.route('/ping', methods=['GET'])
 def route_ping():
     """ Health-check telemetry endpoint confirming GPU configuration bindings """
