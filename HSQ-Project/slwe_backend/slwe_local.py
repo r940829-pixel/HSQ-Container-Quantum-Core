@@ -98,6 +98,15 @@ slwe_engine = None
 # RESTFUL API ENDPOINTS 
 # ==============================================================================
 
+@app.route('/reset', methods=['POST'])
+def route_reset():
+    global slwe_engine
+    if slwe_engine:
+        slwe_engine.signal_vector = np.zeros(slwe_engine.dimension, dtype=complex)
+        slwe_engine.signal_vector[0] = 1.0 + 0j
+        slwe_engine.k_delta = 0.0
+    return jsonify({"status": "success", "msg": "SLWE engine state reset successfully"})
+
 @app.route('/instruction', methods=['POST'])
 def route_instruction():
     """ Master API gateway processing incoming configuration instructions """
@@ -173,5 +182,5 @@ if __name__ == "__main__":
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
 
     print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
-    print("Listening on Host Loopback Network Address Address via Port: 6000 ...")
+    print("Listening on Host Loopback Network Address Address via Port: 5012 ...")
     app.run(host='127.0.0.1', port=6000, debug=False)
