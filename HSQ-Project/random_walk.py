@@ -100,7 +100,7 @@ if __name__ == "__main__":
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     
     hsq_target = AblationTargetWalker(5011, "HSQ Worker Node")
-    slwe_target = AblationTargetWalker(5012, "SLWE Reference Node")
+    slwe_target = AblationTargetWalker(6000, "SLWE Reference Node")
     
     NUM_SEEDS = 20 
     EVOLVE_STEPS = 10
