@@ -119,18 +119,18 @@ def quick_deploy_network():
     # ==========================================================================
     if deploy_slwe:
         print("\n[Channel 2] Orchestrating the classical multi-qubit linear baseline SLWE engine context...")
+        # [Architecture Upgrade] Relocate SLWE port from 5012 to 6000 to completely resolve port collisions with HSQ clusters when N>=2
         slwe_port = 6000 
         try:
-            current_env = os.environ.copy()
-            current_env["SLWE_QUBITS_SCALE"] = str(n_qubits)
-            
             slwe_process = subprocess.Popen(
                 [sys.executable, "slwe_local.py"],
-                env=current_env, 
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
+            slwe_process.stdin.write(f"{n_qubits}\n")
+            slwe_process.stdin.flush()
             print(f" -> SLWE microservice daemon initialized safely (Successfully locked interface Port: {slwe_port})")
             print(f" -> Classical signal {2**n_qubits}-dimensional tensor product Hilbert space fully allocated.")
         except Exception as e:
@@ -142,3 +142,4 @@ def quick_deploy_network():
 
 if __name__ == "__main__":
     quick_deploy_network()
+
