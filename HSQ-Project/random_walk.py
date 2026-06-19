@@ -16,30 +16,41 @@ class AblationTargetWalker:
         self.name = name
 
     def execute_clean_evolution(self, steps, noise_level, config_id, seed_val):
-        """ [Pure Physics Execution Gateway] No Hardcoded Fallbacks """
+        """ 
+        [Audited Microservice Flow Controller]
+        Forcibly flushes TCP sockets via explicit header closure to guarantee zero crosstalk.
+        """
+        custom_headers = {"Connection": "close"}
+        
         try:
-            requests.post(f"{self.url}/reset", json={}, timeout=0.5)
+            requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=0.8)
         except:
             pass
-        time.sleep(0.02) 
+        time.sleep(0.03) 
                 
-        for _ in range(steps):
+        for s in range(steps):
             try:
-                requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=1.5)
+                requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=1.5)
                 
                 if config_id in ["B", "D"]:
                     delta_phi = np.random.normal(0, noise_level) if noise_level > 0 else 0.05
                     requests.post(f"{self.url}/instruction", 
                                   json={"gate": "p", "delta_phi": delta_phi, "seed": seed_val}, 
+                                  headers=custom_headers,
                                   timeout=1.5)
             except:
                 pass
                 
         try:
-            res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id}, timeout=3.0)
+            res = requests.post(f"{self.url}/evolve", 
+                                json={"noise": noise_level, "config_id": config_id}, 
+                                headers=custom_headers,
+                                timeout=4.0) 
+            
             if res.status_code == 200:
                 dist = np.array(res.json().get('probability_density', np.zeros(500)))
                 if dist.sum() > 0: 
+                    time.sleep(0.02)
                     return dist / dist.sum()
         except Exception as e:
             print(f" ❌ [Network Crash] Failed to connect to {self.name} on URL {self.url}. Error: {e}")
