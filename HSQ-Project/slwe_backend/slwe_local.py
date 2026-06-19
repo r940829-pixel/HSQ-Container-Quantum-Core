@@ -173,5 +173,5 @@ if __name__ == "__main__":
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
 
     print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
-    print("Listening on Host Loopback Network Address Address via Port: 5012 ...")
+    print("Listening on Host Loopback Network Address Address via Port: 6000 ...")
     app.run(host='127.0.0.1', port=6000, debug=False)
