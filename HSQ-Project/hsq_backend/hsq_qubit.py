@@ -284,7 +284,19 @@ def route_measure_coherence():
     coherence_value = float(np.abs(hsq_qubit.a * np.conj(hsq_qubit.b)))
     gauge_check = float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2)
     return jsonify({"coherence": coherence_value, "gauge_metric_integrity": gauge_check})
-
+    
+@app.route('/reset', methods=['POST'])
+def route_reset():
+    global hsq_qubit
+    if hsq_qubit:
+        hsq_qubit.a = 1.0 + 0j
+        hsq_qubit.b = 0.0 + 0j
+        hsq_qubit.theta = 0.0
+        hsq_qubit.phi = 0.0
+        hsq_qubit.k_delta = 0.0
+        hsq_qubit.current_step = 0
+    return jsonify({"status": "success", "msg": "HSQ qubit register reset to state |0> successfully"})
+    
 if __name__ == "__main__":
     print(f"=== [HSQ Verified Core Microservice] Initialization Successful | Listening on Port 5000 ===")
     app.run(host='0.0.0.0', port=5000)
