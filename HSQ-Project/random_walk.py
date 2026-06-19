@@ -50,18 +50,18 @@ class AblationTargetWalker:
                 
         for _ in range(steps):
             try:
-                requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=0.2)
+                requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=2.0)
                 
                 if config_id in ["B", "D"]:
                     delta_phi = np.random.normal(0, noise_level) if noise_level > 0 else 0.05
                     requests.post(f"{self.url}/instruction", 
                                   json={"gate": "p", "delta_phi": delta_phi, "seed": seed_val}, 
-                                  timeout=0.2)
+                                  timeout=2.0)
             except:
                 pass
                 
         try:
-            res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id}, timeout=0.5).json()
+            res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id}, timeout=2.0).json()
             dist = np.array(res.get('probability_density', np.zeros(500)))
             if dist.sum() > 0: 
                 return dist / dist.sum()
