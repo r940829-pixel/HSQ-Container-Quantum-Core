@@ -203,6 +203,16 @@ def route_instruction():
             "a_magnitude": float(np.abs(hsq_qubit.a)), 
             "b_magnitude": float(np.abs(hsq_qubit.b))
         })
+
+    elif gate_name in ["x", "not"]:
+        # 🌟 [CRITICAL FIXED] Exposed the missing Pauli-X route for architectural parity with SLWE
+        hsq_qubit.apply_pauli_x_gate()
+        return jsonify({
+            "status": "success",
+            "gate": "Pauli-X",
+            "a_magnitude": float(np.abs(hsq_qubit.a)),
+            "b_magnitude": float(np.abs(hsq_qubit.b))
+        })
         
     elif gate_name in ["phase", "p"]:
         delta_phi = float(data.get("delta_phi", 0.0))
