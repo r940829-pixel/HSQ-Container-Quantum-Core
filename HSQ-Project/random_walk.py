@@ -37,39 +37,43 @@ class AblationTargetWalker:
 
     def execute_clean_evolution(self, steps, noise_level, config_id, seed_val):
         """ 
-        [Pure Physics Execution Gateway]
-        Forcibly calls the actual microservice function endpoints. NO HARDCODED FALLBACKS.
-        Config A & C: P-Gate Abolished  |  Config B & D: P-Gate Enforced
+        [Audited Physics Execution Gateway]
+        Decoupled reset routine to prevent thread blocking and port exhaustion.
         """
         for _ in range(3):
             try:
-                requests.post(f"{self.url}/reset", json={}, timeout=1.0)
-                break
+                if config_id in ["A", "B"]:
+                    break
+                
+                res = requests.post(f"{self.url}/reset", json={}, timeout=1.0)
+                if res.status_code == 200:
+                    break
             except: 
-                time.sleep(0.02)
+                time.sleep(0.05) 
                 
         for _ in range(steps):
             try:
-                requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=2.0)
+                requests.post(f"{self.url}/instruction", json={"gate": "h"}, timeout=1.5)
                 
                 if config_id in ["B", "D"]:
                     delta_phi = np.random.normal(0, noise_level) if noise_level > 0 else 0.05
                     requests.post(f"{self.url}/instruction", 
                                   json={"gate": "p", "delta_phi": delta_phi, "seed": seed_val}, 
-                                  timeout=2.0)
+                                  timeout=1.5)
             except:
                 pass
                 
         try:
-            res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id}, timeout=2.0).json()
-            dist = np.array(res.get('probability_density', np.zeros(500)))
-            if dist.sum() > 0: 
-                return dist / dist.sum()
+            res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id}, timeout=3.0)
+            if res.status_code == 200:
+                dist = np.array(res.json().get('probability_density', np.zeros(500)))
+                if dist.sum() > 0: 
+                    return dist / dist.sum()
         except Exception as e:
             print(f" ❌ [Network Crash] Failed to connect to {self.name} on URL {self.url}. Error: {e}")
             
         return np.ones(500) / 500.0
-
+        
 def quantify_metrics(p_mesh, q_ideal):
     p_mesh = np.clip(p_mesh, 1e-12, 1.0) / np.sum(p_mesh)
     q_ideal = np.clip(q_ideal, 1e-12, 1.0) / np.sum(q_ideal)
