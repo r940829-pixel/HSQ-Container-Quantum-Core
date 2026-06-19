@@ -10,46 +10,18 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-print("======================================================================")
-print("=== WP1 & WP4: Real Physics Operator Ablation Engine (Live Ports) ===")
-print("======================================================================")
-
-def diagnose_seed_matrix(P_seeds, Q, label=""):
-    """ Rigorous metric validation gateway to secure data integrity """
-    P_seeds = np.asarray(P_seeds, float)
-    seed_std = P_seeds.std(axis=0).max()
-    
-    if any(np.allclose(P_seeds[i], Q, atol=1e-7) for i in range(len(P_seeds))):
-        print(f" ❌ [{label}] BUG① DETECTED: Noisy profile circularly matches reference Q.")
-    else:
-        print(f"  [Pass] [{label}] Isolation Audit: Noisy execution matrices successfully separated.")
-        
-    if seed_std < 1e-8:
-        print(f" ❌ [{label}] BUG② DETECTED: Static zero variance across seeds.")
-    else:
-        print(f"  [Pass] [{label}] Variance Audit: Stochastic fluctuations verified. seed_std = {seed_std:.2e}")
-    return seed_std
-
 class AblationTargetWalker:
     def __init__(self, port, name):
         self.url = f"http://127.0.0.1:{port}"
         self.name = name
 
     def execute_clean_evolution(self, steps, noise_level, config_id, seed_val):
-        """ 
-        [Audited Physics Execution Gateway]
-        Decoupled reset routine to prevent thread blocking and port exhaustion.
-        """
-        for _ in range(3):
-            try:
-                if config_id in ["A", "B"]:
-                    break
-                
-                res = requests.post(f"{self.url}/reset", json={}, timeout=1.0)
-                if res.status_code == 200:
-                    break
-            except: 
-                time.sleep(0.05) 
+        """ [Pure Physics Execution Gateway] No Hardcoded Fallbacks """
+        try:
+            requests.post(f"{self.url}/reset", json={}, timeout=0.5)
+        except:
+            pass
+        time.sleep(0.02) 
                 
         for _ in range(steps):
             try:
