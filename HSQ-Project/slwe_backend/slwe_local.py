@@ -103,4 +103,4 @@ if __name__ == "__main__":
     except ValueError:
         user_qubits = 1
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
-    app.run(host='127.0.0.1', port=6000, debug=False)
+    app.run(host='127.0.0.1', port=6000, debug=False, threaded=True)
