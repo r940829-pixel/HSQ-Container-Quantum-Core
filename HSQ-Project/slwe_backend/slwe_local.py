@@ -118,6 +118,12 @@ def route_instruction():
         if slwe_engine:
             slwe_engine.apply_hadamard_to_all()
         return jsonify({"status": "success", "msg": "Global SLWE Hadamard transformation completed"})
+    
+    elif gate_name in ["phase", "p"]:
+        # 🌟 [CRITICAL FIXED] Linked the missing phase gate operator API route for ablation studie fairness!
+        delta_phi = float(data.get("delta_phi", 0.0))
+        if slwe_engine: slwe_engine.apply_phase_rotation_to_all(delta_phi)
+        return jsonify({"status": "success", "msg": "Global SLWE Phase rotation completed"})
         
     elif gate_name in ["x", "not"]:
         # Refactored: Support basic state-flipping operation for diagnostic fairness
