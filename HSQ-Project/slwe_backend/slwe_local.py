@@ -174,4 +174,4 @@ if __name__ == "__main__":
 
     print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
     print("Listening on Host Loopback Network Address Address via Port: 5012 ...")
-    app.run(host='127.0.0.1', port=5012, debug=False)
+    app.run(host='127.0.0.1', port=6000, debug=False)
