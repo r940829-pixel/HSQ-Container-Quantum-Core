@@ -9,6 +9,7 @@
 
 import numpy as np
 from flask import Flask, request, jsonify
+import os
 
 app = Flask(__name__)
 
@@ -157,14 +158,13 @@ def route_ping():
 
 
 if __name__ == "__main__":
+    
     print("====================================================")
     print("===   La Cour & Spreeuw Reference Framework: SLWE ===")
     print("====================================================")
     
     try:
-        user_qubits = int(input("Designate virtual qubit scale for SLWE emulation (e.g., 1, 2, 3): "))
-        if user_qubits < 1: 
-            user_qubits = 1
+        user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
     except ValueError:
         user_qubits = 1
         
@@ -173,5 +173,5 @@ if __name__ == "__main__":
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
 
     print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
-    print("Listening on Host Loopback Network Address Address via Port: 6000 ...")
+    print("Listening on Host Loopback Network Address via Port: 6000 ...")
     app.run(host='127.0.0.1', port=6000, debug=False)
