@@ -45,7 +45,14 @@ step2:
 ```bash
 sudo apt update && sudo apt install python3-venv python3-full -y
 ```
-
+create your environment for python list:
+```bash
+python3 -m venv myenv
+```
+Enter your environment instruction:
+```bash
+source myenv/bin/activate
+```
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
