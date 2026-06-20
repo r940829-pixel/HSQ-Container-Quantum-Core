@@ -24,7 +24,7 @@ class DocumentBasedSLWEEngine:
         self.k_delta = 0.0
 
     def apply_hadamard_to_all(self):
-        """ Execute linear global mixer transformations via Kronecker Kronecker expansions. """
+        """ Execute linear global mixer transformations via Kronecker expansions. """
         H_single = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
         H_total = H_single
         for _ in range(self.num_qubits - 1):
@@ -101,7 +101,6 @@ def route_instruction():
         return jsonify({"status": "success", "msg": "Global SLWE Hadamard completed"})
         
     elif gate_name in ["phase", "p"]:
-        # 🌟 [CRITICAL FIXED] Linked the missing phase gate operator API route for ablation studie fairness!
         delta_phi = float(data.get("delta_phi", 0.0))
         if slwe_engine: slwe_engine.apply_phase_rotation_to_all(delta_phi)
         return jsonify({"status": "success", "msg": "Global SLWE Phase rotation completed"})
@@ -138,11 +137,17 @@ if __name__ == "__main__":
     print("===    La Cour & Spreeuw Reference Framework: SLWE ===")
     print("====================================================")
     
-    # Directly read the scaled dimension from environment variables injected by orchestrator
+    # 🌟 [ANGIE UPDATE] Modified to support direct terminal keyboard input
     try:
-        user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
-    except ValueError:
-        user_qubits = 1
+        user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
+        user_qubits = int(user_input)
+    except (ValueError, KeyboardInterrupt, EOFError):
+        # Fallback to environment variable or default if input is bypassed
+        try:
+            user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
+        except ValueError:
+            user_qubits = 1
+        print(f"\n -> Input bypassed. Falling back to configuration scale: N={user_qubits}")
         
     print(f"\n[Hardware Matrix Allocated] Successfully deployed {user_qubits} classical channels ({2**user_qubits} dimensions).")
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
