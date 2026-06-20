@@ -36,6 +36,16 @@ pack hsq_qubit.py to make image.
 sudo docker build --pull=false -t hsq_core:latest .
 ```
 #### Environment Dependencies
+preliminary work to install Python runtime environment.
+step1:
+```bash
+sudo apt install python3-pip
+```
+step2:
+```bash
+sudo apt update && sudo apt install python3-venv python3-full -y
+```
+
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
