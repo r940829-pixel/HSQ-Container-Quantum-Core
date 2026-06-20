@@ -14,18 +14,39 @@ By isolating microscopic spinor registers inside lightweight **Docker microservi
 
 The platform employs a decoupled, cloud-native microservice topology to enforce strict spatial localization and cross-node hardware isolation, eliminating numerical memory contamination inherent in global state-vector computing.
 
-### Environment Dependencies
+### Set environment in linux system
+install docker step1:
+```bash
+sudo systemctl start docker
+```
+install docker step2:
+```bash
+sudo systemctl enable docker
+```
+check docker version:
+```bash
+sudo docker --version
+```
+install the mod to unzip this zip file.
+```bash
+sudo apt update && sudo apt install unzip -y
+```
+pack hsq_qubit.py to make image.
+```bash
+sudo docker build --pull=false -t hsq_core:latest .
+```
+#### Environment Dependencies
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
 ```
-#### remore all container
+##### remore all container
 To remore the container, enter the following command
 ```bash
 sudo docker rm -f $(sudo docker ps -a -q)
 ```
 
-##### Use slwe_local.py in terminal(window system version)
+###### Use slwe_local.py in terminal(window system version)
 To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
 ```bash
 python slwe_local.py
