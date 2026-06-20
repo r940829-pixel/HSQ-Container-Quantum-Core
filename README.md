@@ -25,6 +25,12 @@ To remore the container, enter the following command
 sudo docker rm -f $(sudo docker ps -a -q)
 ```
 
+##### Use slwe_local.py in terminal(window system version)
+To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
+```bash
+python slwe_local.py
+```
+
 ```text
 +-----------------------------------------------------------------+
 |            Windows Host (Main Orchestration & Control)          |
