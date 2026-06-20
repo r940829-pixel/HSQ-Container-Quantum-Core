@@ -138,6 +138,7 @@ if __name__ == "__main__":
     print("===    La Cour & Spreeuw Reference Framework: SLWE ===")
     print("====================================================")
     
+    # Directly read the scaled dimension from environment variables injected by orchestrator
     try:
         user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
     except ValueError:
@@ -147,5 +148,5 @@ if __name__ == "__main__":
     slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
 
     print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
-    # 🌟 Enabled threaded=True to prevent socket queue jams during high-frequency harvesting loops
+    # Rigid loopback binding with concurrent thread safety enabled
     app.run(host='127.0.0.1', port=6000, debug=False, threaded=True)
