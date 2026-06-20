@@ -17,7 +17,7 @@ The platform employs a decoupled, cloud-native microservice topology to enforce 
 ### Environment Dependencies
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
-pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer
+pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
 ```
 #### remore all container
 To remore the container, enter the following command
