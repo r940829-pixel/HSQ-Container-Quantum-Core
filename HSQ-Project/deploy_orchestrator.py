@@ -116,21 +116,23 @@ def quick_deploy_network():
 
     # ==========================================================================
     # 4. LINEAR CONTINUOUS WAVE BENCHMARK INITIALIZATION (SLWE LAYER - SUBPROCESS)
-    # ==========================================================================
+    # ==============================================================================
     if deploy_slwe:
         print("\n[Channel 2] Orchestrating the classical multi-qubit linear baseline SLWE engine context...")
-        # [Architecture Upgrade] Relocate SLWE port from 5012 to 6000 to completely resolve port collisions with HSQ clusters when N>=2
         slwe_port = 6000 
         try:
+            # 🌟 Refactored: Clone current environment and inject the correct Qubit Scale variable safely
+            current_env = os.environ.copy()
+            current_env["SLWE_QUBITS_SCALE"] = str(n_qubits)
+            
+            # 🌟 Refactored: Route stdout/stderr to DEVNULL to absolute eliminate pipe buffer deadlock crashes!
             slwe_process = subprocess.Popen(
                 [sys.executable, "slwe_local.py"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                env=current_env, 
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 text=True
             )
-            slwe_process.stdin.write(f"{n_qubits}\n")
-            slwe_process.stdin.flush()
             print(f" -> SLWE microservice daemon initialized safely (Successfully locked interface Port: {slwe_port})")
             print(f" -> Classical signal {2**n_qubits}-dimensional tensor product Hilbert space fully allocated.")
         except Exception as e:
