@@ -168,7 +168,6 @@ hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 
 @app.route('/reset', methods=['POST'])
 def route_reset():
-    """ 🌟 [CRITICAL FIXED] 補齊重置清洗網關，洗淨複數暫存器，杜絕 404 與超時 """
     global hsq_qubit
     if hsq_qubit:
         hsq_qubit.a = 1.0 + 0j
