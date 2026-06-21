@@ -22,7 +22,7 @@ slwe_url = "http://127.0.0.1:6000/evolve"  # Deployed SLWE Benchmark Reference N
 headers = {"Content-Type": "application/json"}
 
 # High-stress phase-damping environmental stress configuration
-test_noise = 0.10  
+test_noise = 1.00  
 total_frames = 25  
 time_steps = np.linspace(0.1, 10.0, total_frames)
 
@@ -41,7 +41,7 @@ current_images = []
 
 def init():
     """ Establish and render the baseline localized topological boundary rings """
-    for ax, title in zip([ax1, ax2], ["HSQ Qubit (Gauge-Protected Domain)", "SLWE Qubit (Linear Wave Contraction)"]):
+    for ax, title in zip([ax1, ax2], ["HSQ Qubit ", "SLWE Qubit (Linear Wave Contraction)"]):
         ax.set_facecolor('black')
         ax.set_xticks([])
         ax.set_yticks([])
