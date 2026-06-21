@@ -53,11 +53,13 @@ class DocumentBasedSLWEEngine:
             self.signal_vector[i] = self.signal_vector[i] * np.exp(1j * delta_phi)
         self._enforce_normalization_safeguard()
 
-    def inject_phase_damping(self, noise_level=0.1):
+    # 🌟 [CRITICAL FIXED] Correctly injected 'seed_val' into parameter map
+    def inject_phase_damping(self, noise_level=0.1, seed_val=None):
         """ Simulate random environmental dephasing phase noise insertion. """
+        # 🌟 [ANGIE'S COHERENT SEED - SYNTAX RESOLVED] Rigorously locked the scope of the worldline seed!
         if seed_val is not None:
-            np.random.seed(seed_val + self.current_step)
-                           
+            np.random.seed(int(seed_val) + self.current_step)
+                            
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise
         for i in range(1, self.dimension):
@@ -117,7 +119,7 @@ def route_reset():
     global slwe_engine
     data = request.get_json(silent=True) or {}
     
-    # 🌟 [UPGRADED FOR MULTI-QUBIT SCALING PARITY] Allows dynamic rescaling during controller handshakes
+    # 🌟 Allows dynamic rescaling during controller handshakes
     requested_qubits = data.get("num_qubits")
     if requested_qubits is not None:
         user_qubits = int(requested_qubits)
@@ -168,8 +170,12 @@ def route_evolve():
         data = request.args
         noise = float(data.get('noise', 0.0))
         t = float(data.get('t', 1.0))
+        # 🌟 [CRITICAL FIXED] Properly captured the fallback seed value under GET scopes
+        seed_val = data.get('seed')
+        if seed_val is not None: seed_val = int(seed_val)
         
     if noise > 0: 
+        # 🌟 Unsealed seed parameters to guarantee real-physics dephasing distribution
         slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
         
     prob_dist = slwe_engine.get_document_probability_density(t=t)
