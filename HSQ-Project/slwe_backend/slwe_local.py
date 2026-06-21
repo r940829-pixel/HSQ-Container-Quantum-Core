@@ -39,7 +39,7 @@ class DocumentBasedSLWEEngine:
         for _ in range(self.num_qubits - 1):
             H_total = np.kron(H_total, H_single)
         self.signal_vector = np.dot(H_total, self.signal_vector)
-        self.phi = 0.0 # Reset embedded phase on mixer crossover
+        self.phi = 0.0  # Reset embedded phase on mixer crossover
         self._enforce_normalization_safeguard()
 
     def apply_phase_rotation_to_all(self, delta_phi):
@@ -69,7 +69,7 @@ class DocumentBasedSLWEEngine:
 
     def get_document_probability_density(self, t=1.0):
         """ 
-        🌟 [PHYSICS CLOSURE: INTERFEROMETRY SOLVER OPTIMIZATION]
+        [PHYSICS CLOSURE: INTERFEROMETRY SOLVER OPTIMIZATION]
         Removes the legacy absolute-value blind spots. Blends full complex wavefields 
         together with complete composite phase terms BEFORE extracting magnitude squares.
         Guarantees clear topological profile asymmetry when P-gates are active!
@@ -96,7 +96,7 @@ class DocumentBasedSLWEEngine:
         space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid + (w_b * self.phi)
         composite_phase = time_phase + space_phase
         
-        # 🌟 Reconstruct complex wave fields live to enforce true constructive/destructive interference
+        # Reconstruct complex wave fields live to enforce true constructive/destructive interference
         xi_classical = composite_envelope * (a_complex + b_complex) * np.exp(1j * composite_phase)
         
         # Extract true normalized intensity mapping profiles
@@ -112,13 +112,20 @@ slwe_engine = None
 @app.route('/reset', methods=['POST'])
 def route_reset():
     global slwe_engine
-    if slwe_engine:
-        slwe_engine.signal_vector = np.zeros(slwe_engine.dimension, dtype=complex)
-        slwe_engine.signal_vector[0] = 1.0 + 0j
-        slwe_engine.phi = 0.0
-        slwe_engine.k_delta = 0.0
-        slwe_engine.current_step = 0 
-    return jsonify({"status": "success", "msg": "SLWE engine state reset successfully"})
+    data = request.get_json(silent=True) or {}
+    
+    # 🌟 [UPGRADED FOR MULTI-QUBIT SCALING PARITY] Allows dynamic rescaling during controller handshakes
+    requested_qubits = data.get("num_qubits")
+    if requested_qubits is not None:
+        user_qubits = int(requested_qubits)
+    else:
+        user_qubits = slwe_engine.num_qubits if slwe_engine else 1
+        
+    slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
+    return jsonify({
+        "status": "success", 
+        "msg": f"SLWE engine matrix reset and reallocated successfully for N={user_qubits}"
+    })
 
 @app.route('/instruction', methods=['POST'])
 def route_instruction():
