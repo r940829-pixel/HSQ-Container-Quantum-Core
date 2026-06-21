@@ -160,22 +160,6 @@ capture_evolution_gif.py: 2D Polar Projection Visualizer. An asynchronous, non-d
 
 ---
 
-```text
-📊 Quantitative Benchmarks & Experimental Verification
-The verification suite evaluates a 10-step Quantum Random Walk (QRW) subjected to a 10.0% Phase Damping Noise floor across 20 independent seeds. The harvested metrics yield distinct statistical and physical behaviors:
-Computational Accuracy vs. Analytical(Table I):
-Quantum Fidelity (F): 97.557% (Demonstrating tight convergence with Qiskit Aer baseline profiles).
-Total Variation Distance (TVD): 0.116835 (Strictly bounded under formal information-theoretic inequality limits).
-Multi-Seed Environmental Robustness Analysis (Table II):
-HSQ Wavepacket Integrity: 0.9635 +- 0.0037 (Sustaining sharp symmetric transport peaks ).
-SLWE Wavepacket Integrity: 0.2439 +- 0.0091 (Undergoing an irreversible decoherence avalanche and collapsing into a classical Brownian distribution with a Peak-to-Valley ratio approaching 1.0).
-Host Computer Hardware Scaling Performance (Table III):
-GPU Accelerated Runtime: Constant at 0.45ms per step across all scaling limits, bypassing OS kernel thread scheduling overhead.
-Maximum Acceleration Ratio: Spontaneous emergence at the extreme (N=100 concurrent microservice nodes).
-```
-
----
-
 🚀 Quick Start & Reproducibility Guide
 PrerequisitesWindows 10 / 11 with WSL2 (Ubuntu Linux Kernel) enabled.
 Docker Desktop active and integrated with the WSL2 backend.
