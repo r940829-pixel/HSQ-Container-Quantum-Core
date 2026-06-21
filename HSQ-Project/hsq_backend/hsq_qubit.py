@@ -150,7 +150,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         
         # 3. Formulate the composite phase index Theta(x, t)
         time_phase = (w_a * self.omega_L + w_b * self.omega_R) * t
-        space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid
+        space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid + (w_b * self.phi)
         composite_phase = time_phase + space_phase
         
         # 4. Extrapolate macro continuous wave distribution profile
