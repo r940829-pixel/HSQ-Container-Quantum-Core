@@ -66,14 +66,13 @@ class LiveTargetWalker:
 
 def compute_qiskit_live_ground_truth(steps, config_id, x_mesh):
     """
-    🌟 [PHYSICS PERFECT CLOSURE: COMPLEX FIELD THEORETICAL ANCHOR]
+    [PHYSICS PERFECT CLOSURE: COMPLEX FIELD THEORETICAL ANCHOR]
     Generates a dynamic, living reference baseline by executing an ideal error-free 
     Qiskit circuit, then blending the complex amplitudes prior to extracting probability density.
     """
     qc = QuantumCircuit(1)
     qc.h(0)
     
-    # 🌟 Extract the true theoretical gate value mapped directly from Qiskit definitions
     phi_theoretical = 0.05 if config_id in ["B", "D"] else 0.0
     if config_id in ["B", "D"]:
         qc.p(phi_theoretical, 0) 
@@ -108,7 +107,7 @@ def compute_qiskit_live_ground_truth(steps, config_id, x_mesh):
     space_phase = (w_a * k_L + w_b * k_R) * x_mesh + (w_b * phi_theoretical)
     composite_phase = time_phase + space_phase
     
-    # 🌟 Core Interferometry Assembly BEFORE magnitude squaring (Rigorous Quantum Optics Rule)
+    # Core Interferometry Assembly BEFORE magnitude squaring (Rigorous Quantum Optics Rule)
     xi_ideal = composite_envelope * (a_complex + b_complex) * np.exp(1j * composite_phase)
     profile = np.abs(xi_ideal)**2
     
@@ -208,7 +207,7 @@ if __name__ == "__main__":
     for cid, name, theory_type in configs_meta:
         matrix = np.array(loaded_data[cid])
         
-        # 🌟 [CRITICAL FIX] Dynamic baseline mapping aligning precisely with the current configuration type!
+        # Dynamic baseline mapping aligning precisely with the current configuration type
         q_dynamic_reference = compute_qiskit_live_ground_truth(EVOLVE_STEPS, theory_type, x_axis)
         
         residuals = np.array([np.sqrt(np.sum((seed_profile - q_dynamic_reference)**2)) for seed_profile in matrix])
@@ -251,18 +250,24 @@ if __name__ == "__main__":
     plt.close()
 
     # Render FIG 2 with live dynamic baseline tracking
-    plt.figure(figsize=(9, 4.5))
-    plt.plot(x_axis, q_plot_reference, 'b:', label='Qiskit Aer Analytical Ground Truth (Config D Reference)', linewidth=1.8, alpha=0.8)
-    plt.plot(x_axis, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
-    plt.plot(x_axis, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
-    plt.plot(x_axis, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
-    plt.plot(x_axis, validated_profiles["D"], color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
+    fig_qrw, ax_qrw = plt.subplots(figsize=(9, 4.5))
+    ax_qrw.plot(x_axis, q_plot_reference, 'b:', label='Qiskit Aer Analytical Ground Truth (Config D Reference)', linewidth=1.8, alpha=0.8)
+    ax_qrw.plot(x_axis, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
+    ax_qrw.plot(x_axis, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
+    ax_qrw.plot(x_axis, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
+    ax_qrw.plot(x_axis, validated_profiles["D"], color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
     
-    plt.xlabel('Spatial Grid Position Coordinate (x)', fontsize=11, fontname='Times New Roman')
-    plt.ylabel('Cross-Validated Ensemble Probability Density P(x)', fontsize=11, fontname='Times New Roman')
-    plt.xlim(-20, 20); plt.ylim(0, max(q_plot_reference) * 1.25); plt.grid(True, linestyle=':', alpha=0.5)
-    plt.legend(loc='upper right', frameon=True, facecolor='#FFFFFF', edgecolor='#DDDDDD', fontsize=9.5)
+    ax_qrw.set_xlabel('Spatial Grid Position Coordinate (x)', fontsize=11, fontname='Times New Roman')
+    ax_qrw.set_ylabel('Cross-Validated Ensemble Probability Density P(x)', fontsize=11, fontname='Times New Roman')
+    ax_qrw.set_xlim(-20, 20)
+    ax_qrw.set_ylim(0, max(q_plot_reference) * 1.25)
+    ax_qrw.grid(True, linestyle=':', alpha=0.5)
     
+    # 🌟 [SCHOLASTIC FINALIZE] Rigidly assigned Times New Roman font onto axis ticks to pass metrology audits cleanly
+    for label in (ax_qrw.get_xticklabels() + ax_qrw.get_yticklabels()):
+        label.set_fontname('Times New Roman')
+        
+    ax_qrw.legend(loc='upper right', frameon=True, facecolor='#FFFFFF', edgecolor='#DDDDDD', fontsize=9.5)
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight')
     plt.close()
     print("\n🏆 [SUCCESS] Pure real-physics data collection loops are fully closed.")
