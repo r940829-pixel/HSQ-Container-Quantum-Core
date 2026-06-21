@@ -55,6 +55,9 @@ class DocumentBasedSLWEEngine:
 
     def inject_phase_damping(self, noise_level=0.1):
         """ Simulate random environmental dephasing phase noise insertion. """
+        if seed_val is not None:
+            np.random.seed(seed_val + self.current_step
+                           
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise
         for i in range(1, self.dimension):
@@ -156,6 +159,9 @@ def route_evolve():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         noise = float(data.get('noise', 0.0))
+        seed_val = data.get('seed')
+        if seed_val is not None: seed_val = int(seed_val)
+            
         slwe_engine.current_step += 1
         t = slwe_engine.current_step * 0.1
     else:
@@ -164,7 +170,7 @@ def route_evolve():
         t = float(data.get('t', 1.0))
         
     if noise > 0: 
-        slwe_engine.inject_phase_damping(noise)
+        slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
         
     prob_dist = slwe_engine.get_document_probability_density(t=t)
     return jsonify({"probability_density": prob_dist, "gauge_metric_integrity": float(np.abs(slwe_engine.signal_vector[0]) ** 2)})
