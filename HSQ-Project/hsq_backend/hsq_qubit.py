@@ -106,7 +106,10 @@ class HilbertSpaceSpinorQuasiparticleService:
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
         """ Simulates discrete environmental dephasing phase noise insertion """
         if seed_val is not None:
-            np.random.seed(seed_val + self.current_step)
+            try:
+                np.random.seed(int(seed_val) + int(self.current_step))
+            except (ValueError, TypeError):
+                pass
             
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise  
