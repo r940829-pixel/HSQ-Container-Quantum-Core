@@ -56,7 +56,7 @@ class DocumentBasedSLWEEngine:
     def inject_phase_damping(self, noise_level=0.1):
         """ Simulate random environmental dephasing phase noise insertion. """
         if seed_val is not None:
-            np.random.seed(seed_val + self.current_step
+            np.random.seed(seed_val + self.current_step)
                            
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise
