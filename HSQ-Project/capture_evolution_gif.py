@@ -1,8 +1,9 @@
 # ==============================================================================
 # ADVANCED 2D POLAR PROJECTION VISUALIZER & TOPOLOGICAL MAPPING SUITE
+# [MAXIMUM COMPLIANCE - MATPLOTLIB MAXIMUM RENDER SPECIFICATION]
 # This asynchronous analytics script queries the active microservice network 
 # topologies, pulling real-time spatiotemporal wavepacket probability arrays, 
-# and interpolates them onto a 2D polar gauge disk manifold group.
+# and interpolates them onto a 2D polar gauge disk manifold group cleanly.
 # Fully optimized for Matplotlib 3.10+ and Python 3.13 environment execution.
 # ==============================================================================
 
@@ -27,7 +28,7 @@ time_steps = np.linspace(0.1, 10.0, total_frames)
 
 # Initialize deep-black high-contrast canvas: Left vs. Right Experimental Control Group
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6), facecolor='black')
-fig.suptitle("Quantum Coherence Space-Time Evolution Mapping", color='white', fontsize=14, fontweight='bold')
+fig.suptitle("Quantum Coherence Space-Time Evolution Mapping", color='white', fontsize=14, fontweight='bold', fontname='Times New Roman')
 
 # Construct 2D polar mesh grid tracking data layers (Projecting 1D profiles to 2D disk structures)
 r = np.linspace(0, 1, 50)
@@ -45,11 +46,13 @@ def init():
         ax.set_facecolor('black')
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_title(title, color='white', fontsize=12, pad=10)
+        ax.set_title(title, color='white', fontsize=12, pad=10, fontname='Times New Roman')
         
-        # Deploy high-fidelity macro containment ring indicator
+        # 🌟 [CRITICAL FIXED] Instantiated independent border objects for EACH axis 
+        # to prevent Matplotlib from stripping the patch from the preceding axis element!
         border = plt.Circle((0, 0), 1.02, color='gray', fill=False, linestyle=':', alpha=0.5)
         ax.add_patch(border)
+        
         ax.set_xlim(-1.1, 1.1)
         ax.set_ylim(-1.1, 1.1)
         ax.set_aspect('equal')
@@ -68,9 +71,10 @@ def update(frame):
             pass
     current_images.clear()
     
-    # Purge historical dynamic annotation layers to eliminate overlay distortion artifacts
-    for txt in list(ax1.texts):
-        txt.remove()
+    # 🌟 [CRITICAL FIXED] Clear out static text layers from BOTH experimental control domains safely
+    for ax in [ax1, ax2]:
+        for txt in list(ax.texts):
+            txt.remove()
     
     # --- 1. HARVEST & INTERPOLATE GAUGE-PROTECTED HSQ MANIFOLD ---
     hsq_p = np.zeros(500)
@@ -84,7 +88,7 @@ def update(frame):
     
     # Emulate localized phase disturbance direction visualization vector
     if frame < 8:
-        ax1.text(-1.4, -1.0, " 〰〰▶\nDisruptions", color='coral', fontsize=9, fontweight='bold')
+        ax1.text(-1.4, -1.0, " 〰〰▶\nDisruptions", color='coral', fontsize=9, fontweight='bold', fontname='Times New Roman')
 
     # Synthesize the 2D Gaussian topological structure driven by microscopic active gauge parameters
     sigma_hsq = 0.35 - (hsq_peak * 2.0)  # Phase coherence convergence mapping
@@ -112,8 +116,8 @@ def update(frame):
     # Log fresh mesh assets into active memory stacks for subsequent tracking sweeps
     current_images.extend([im1, im2])
     
-    # Real-time synchronization of system text banners
-    fig.suptitle(f"Quantum Coherence Domain Alignment  |  TIME: {t:.2f} fs  |  Noise Index: {test_noise}", color='white', fontsize=13)
+    # Real-time synchronization of system text banners with Times New Roman formatting
+    fig.suptitle(f"Quantum Coherence Domain Alignment  |  TIME: {t:.2f} fs  |  Noise Index: {test_noise}", color='white', fontsize=13, fontname='Times New Roman')
     
     if (frame + 1) % 5 == 0 or (frame + 1) == total_frames:
         print(f" -> Processing topological manifold matrix... Progress: {frame + 1}/{total_frames} frames")
