@@ -76,7 +76,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         constrained within the unitary hypersphere (||a||² + ||b||² = 1).
         """
         norm = np.sqrt(np.abs(self.a)**2 + np.abs(self.b)**2)
-        if norm > 1e-6:
+        if norm > 1e-15:
             self.a /= norm
             self.b /= norm
 
@@ -125,7 +125,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         Replicates an out-of-process distributed conditional phase gate link.
         """
         phase_shift = np.pi * control_metric
-        self.phi += phase_shift
+        self.phi = phase_shift
         self.b = self.b * np.exp(1j * phase_shift)
         self.enforce_gauge_protection()
 
