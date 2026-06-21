@@ -14,6 +14,8 @@ By isolating microscopic spinor registers inside lightweight **Docker microservi
 
 The platform employs a decoupled, cloud-native microservice topology to enforce strict spatial localization and cross-node hardware isolation, eliminating numerical memory contamination inherent in global state-vector computing.
 
+---
+
 ### Set environment in linux system
 install docker step1:
 ```bash
@@ -35,6 +37,8 @@ pack hsq_qubit.py to make image.
 ```bash
 sudo docker build --pull=false -t hsq_core:latest .
 ```
+---
+
 #### Environment Dependencies
 preliminary work to install Python runtime environment.
 step1:
@@ -57,18 +61,19 @@ Ensure your Python runtime environment has the required auditing libraries insta
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
 ```
+---
 ##### remore all container
 To remore the container, enter the following command
 ```bash
 sudo docker rm -f $(sudo docker ps -a -q)
 ```
-
+---
 ###### Use slwe_local.py in terminal
 To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
 ```bash
 python slwe_local.py
 ```
-
+---
 ```text
 +-----------------------------------------------------------------+
 |            Windows Host (Main Orchestration & Control)          |
@@ -145,3 +150,4 @@ This will compile the host machine's runtime specs and save the dual-axes manusc
 🎓 Peer-Review and IEEE Journal Access TokenFor double-blind peer-review purposes, this repository is hosted on Anonymous GitHub to protect author identity prior to formal acceptance. Reviewers can access, inspect, and independently reproduce the full unredacted source code framework.
 🔗 Digital Object Identifier (DOI) and CitationNote: The permanent Digital Object Identifier (DOI) archive token issued via the Zenodo registry will be unsealed and appended below upon transitioning this archive into a Public Open-Source Repository post-defense.
 ```
+---
