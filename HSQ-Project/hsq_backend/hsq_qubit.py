@@ -99,7 +99,7 @@ class HilbertSpaceSpinorQuasiparticleService:
 
     def apply_phase_rotation_gate(self, delta_phi):
         """ Applies a discrete relative phase rotation matrix transformation """
-        self.phi += delta_phi
+        self.phi = delta_phi
         self.b = self.b * np.exp(1j * delta_phi)
         self.enforce_gauge_protection()
 
