@@ -141,7 +141,7 @@ if __name__ == "__main__":
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     
     NUM_SEEDS = 20 
-    EVOLVE_STEPS = 100  
+    EVOLVE_STEPS = 10  
     target_noise = 0.10  
     x_axis = np.linspace(-20, 20, 500)
 
