@@ -39,7 +39,7 @@ sudo docker build --pull=false -t hsq_core:latest .
 ```
 ---
 
-#### Environment Dependencies
+### Environment Dependencies
 preliminary work to install Python runtime environment.
 step1:
 ```bash
@@ -64,13 +64,13 @@ pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psuti
 ---
 
 
-###### remore all container
+### remore all container
 To remore the container, enter the following command
 ```bash
 sudo docker rm -f $(sudo docker ps -a -q)
 ```
 ---
-###### Use slwe_local.py in terminal
+### Use slwe_local.py in terminal
 To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
 ```bash
 python slwe_local.py
