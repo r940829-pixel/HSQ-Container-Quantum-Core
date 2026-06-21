@@ -181,7 +181,7 @@ PrerequisitesWindows 10 / 11 with WSL2 (Ubuntu Linux Kernel) enabled.
 Docker Desktop active and integrated with the WSL2 backend.
 NVIDIA Container Toolkit configured to allow GPU pass-through to Docker instances.
 1. Execute Cluster Orchestration and Deployment
-Run the main orchestration script from a Windows PowerShell or CMD terminal to automatically reset historic zombie dependencies and deploy a fresh logical network cluster:
+Run the main orchestration script from a Windows PowerShell or CMD terminal to automatically reset historic zombie dependencies and deploy a fresh logical network cluster(please running in wsl, if your computer system is window10/11):
 ```bash
 python deploy_orchestrator.py
 ```
