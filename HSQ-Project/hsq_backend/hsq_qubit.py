@@ -89,6 +89,14 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.a, self.b = new_a, new_b
         self.enforce_gauge_protection()
 
+    def apply_pauli_x_gate(self):
+        """ 
+        🌟 [CRITICAL INJECTED] Realizes the genuine Pauli-X (NOT) quantum gate transformation.
+        Flips the quantum amplitudes of the state registers to eliminate the AttributeError.
+        """
+        self.a, self.b = self.b, self.a
+        self.enforce_gauge_protection()
+
     def apply_phase_rotation_gate(self, delta_phi):
         """ Applies a discrete relative phase rotation matrix transformation """
         self.phi += delta_phi
