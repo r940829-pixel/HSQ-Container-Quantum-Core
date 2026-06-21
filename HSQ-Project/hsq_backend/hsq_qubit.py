@@ -105,6 +105,9 @@ class HilbertSpaceSpinorQuasiparticleService:
 
     def inject_phase_damping(self, noise_level=0.1):
         """ Simulates discrete environmental dephasing phase noise insertion """
+        if seed_val is not None:
+            np.random.seed(seed_val + self.current_step)
+            
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise  
         self.enforce_gauge_protection()
@@ -271,6 +274,9 @@ def route_evolve():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         noise_level = float(data.get('noise', 0.0))
+        seed_val = data.get('seed')
+        if seed_val is not None: seed_val = int(seed_val)
+            
         hsq_qubit.current_step += 1
         t = hsq_qubit.current_step * 0.1
     else:
@@ -278,7 +284,7 @@ def route_evolve():
         noise_level = float(request.args.get('noise', 0.0))
         
     if noise_level > 0:
-        hsq_qubit.inject_phase_damping(noise_level)
+        hsq_qubit.inject_phase_damping(noise_level, seed_val=seed_val)
         
     prob_dist = hsq_qubit.compute_current_xi(t=t)
     
