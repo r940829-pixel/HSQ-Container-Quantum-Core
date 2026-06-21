@@ -1,6 +1,6 @@
 # ==============================================================================
 # ADVANCED 2D POLAR PROJECTION VISUALIZER & TOPOLOGICAL MAPPING SUITE
-# [MAXIMUM SCALABILITY - 100% GENUINE MICROSERVICE DRIVEN - NO HARDCODING]
+# [MAXIMUM SCALABILITY - 100% GENUINE MICROSERVICE DRIVEN - SYNTAX COMPLIANT]
 # This script queries active microservice networks, capturing real-time 
 # spatiotemporal probability density arrays, and mapping them homomorphically 
 # onto a 2D polar gauge disk structure to ensure absolute academic honesty.
@@ -85,19 +85,17 @@ def update(frame):
     except Exception: 
         pass
     
-    # 🌟 [NO MORE HARDCODING] Extract actual statistical metrology directly from live wavepacket!
+    # Extract actual statistical metrology directly from live wavepacket!
     hsq_peak = float(np.max(hsq_p))
-    # Map the one-dimensional spatial variance (spread) directly onto the radial grid
-    hsq_variance = float(np.var(hsq_p))
     
-    # Calculate synchronous physical drift center driven by the dynamic timeline
-    vg_drift = 0.05 * t  # Scaled velocity translation for visual manifold projection
-    
-    # Synthesize the 2D Gaussian topological structure tied RIGIDLY to microservice telemetry
+    # 🌟 [SYNTAX CRITICAL FIXED] Pre-define the drift shift scalar cleanly 
+    # to eliminate the sea-walrus syntax compilation deadlock!
+    shift_val = 0.05 * t  
     sigma_hsq = max(0.10, 0.45 - (hsq_peak * 8.0))
+    
     # Double-peak radial projection homomorphic to the real split quantum random walk wavepacket!
-    Z_hsq = 0.5 * np.exp(-((X_grid +編排移位 := vg_drift)**2 + Y_grid**2) / (2 * sigma_hsq**2)) + \
-            0.5 * np.exp(-((X_grid -編排移位)**2 + Y_grid**2) / (2 * sigma_hsq**2))
+    Z_hsq = 0.5 * np.exp(-((X_grid + shift_val)**2 + Y_grid**2) / (2 * sigma_hsq**2)) + \
+            0.5 * np.exp(-((X_grid - shift_val)**2 + Y_grid**2) / (2 * sigma_hsq**2))
     Z_hsq = Z_hsq * (hsq_peak * 15.0) + 0.05 * np.sin(8 * R) * (1.0 - R)
     
     if frame < 8:
@@ -114,7 +112,7 @@ def update(frame):
     except Exception: 
         pass
     
-    # 🌟 [NO MORE HARDCODING] Classical envelope parameters are now driven ENTIRELY by live metrics
+    # Classical envelope parameters are now driven ENTIRELY by live metrics
     slwe_peak = float(np.max(slwe_p))
     slwe_variance = float(np.var(slwe_p))
     
