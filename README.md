@@ -37,6 +37,43 @@ pack hsq_qubit.py to make image.
 ```bash
 sudo docker build --pull=false -t hsq_core:latest .
 ```
+
+---
+
+### connect graphics processsing unit (nvidia) with docker in linux system.
+step1:
+```bash
+sudo apt-get update
+```
+step2:
+```bash
+sudo apt-get install -y nvidia-driver-535
+```
+step3:
+```bash
+sudo reboot
+```
+step4:
+```bash
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+```
+step5:
+```bash
+sudo apt-get update
+```
+step6:
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+```
+step7:
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
+step8:
+```bash
+sudo systemctl restart docker
+```
+
 ---
 
 ### Environment Dependencies
@@ -61,21 +98,25 @@ Ensure your Python runtime environment has the required auditing libraries insta
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
 ```
----
 
+---
 
 ### remore all container
 To remore the container, enter the following command
 ```bash
 sudo docker rm -f $(sudo docker ps -a -q)
 ```
+
 ---
+
 ### Use slwe_local.py in terminal
 To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
 ```bash
 python slwe_local.py
 ```
+
 ---
+
 ```text
 +-----------------------------------------------------------------+
 |            Windows Host (Main Orchestration & Control)          |
@@ -103,6 +144,9 @@ python slwe_local.py
 |  - Unitary Conserved Manifold via Spinor-Momentum Constraint    |
 +-----------------------------------------------------------------+
 ```
+
+---
+
 ```text
 📂 Manifest Mapping & Component Index
 deploy_orchestrator.py: Automated Ecosystem Purge & Cluster Orchestrator. Cleans defunct container clusters, wipes dangling registries, releases bound host OS communication ports, and dynamically scales up to N=100 isolated logical hardware nodes concurrently under native Linux/WSL2 environments.
@@ -113,6 +157,9 @@ capture_evolution_gif.py: 2D Polar Projection Visualizer. An asynchronous, non-d
 /hsq_backend/hsq_qubit.py: Microscopic Simulation Core. The containerized backend application core implementing non-linear mathematical normalization constraints to eliminate numerical dispersion over 500-point spatiotemporal grids.
 /hsq_backend/Dockerfile: Container Infrastructure Manifest. Builds the lightweight Ubuntu-based container environment pre-configured with the official NVIDIA CUDA 11.8.0 runtime to unleash GPU parallel matrix computations.
 ```
+
+---
+
 ```text
 📊 Quantitative Benchmarks & Experimental Verification
 The verification suite evaluates a 10-step Quantum Random Walk (QRW) subjected to a 10.0% Phase Damping Noise floor across 20 independent seeds. The harvested metrics yield distinct statistical and physical behaviors:
@@ -126,6 +173,9 @@ Host Computer Hardware Scaling Performance (Table III):
 GPU Accelerated Runtime: Constant at 0.45ms per step across all scaling limits, bypassing OS kernel thread scheduling overhead.
 Maximum Acceleration Ratio: Spontaneous emergence at the extreme (N=100 concurrent microservice nodes).
 ```
+
+---
+
 🚀 Quick Start & Reproducibility Guide
 PrerequisitesWindows 10 / 11 with WSL2 (Ubuntu Linux Kernel) enabled.
 Docker Desktop active and integrated with the WSL2 backend.
@@ -147,6 +197,9 @@ To perform live CPU/GPU parallel computing benchmarks and evaluate time complexi
 ```bash
 python benchmark_scaling.py
 ```
+
+---
+
 ```text
 This will compile the host machine's runtime specs and save the dual-axes manuscript chart fig7_hardware_scaling_curve.png complete with mathematical error bars.
 🎓 Peer-Review and IEEE Journal Access TokenFor double-blind peer-review purposes, this repository is hosted on Anonymous GitHub to protect author identity prior to formal acceptance. Reviewers can access, inspect, and independently reproduce the full unredacted source code framework.
