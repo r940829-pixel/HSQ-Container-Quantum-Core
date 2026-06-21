@@ -1,9 +1,9 @@
 # ==============================================================================
 # CLASSICAL SIGNAL-BASED LINEAR WAVE EQUATION (SLWE) BENCHMARK NODE
-# [MAXIMUM PERFORMANCE COMPLIANCE - ALIGNED WITH NIST & IBM QISKIT STANDARDS]
+# [MAXIMUM PERFORMANCE COMPLIANCE - RIGOROUS LA COUR INTERFEROMETRY RENDER]
 # Implements the multi-qubit classical amplitude modulation framework aligned 
 # with the formulations of Spreeuw 2001 & La Cour 2015/2016.
-# Fully upgraded with verified complex-field interferometry to drive precise ablations.
+# Fully upgraded with localized complex-field wave packet interferometry.
 # ==============================================================================
 
 import numpy as np
@@ -53,10 +53,8 @@ class DocumentBasedSLWEEngine:
             self.signal_vector[i] = self.signal_vector[i] * np.exp(1j * delta_phi)
         self._enforce_normalization_safeguard()
 
-    # 🌟 [CRITICAL FIXED] Correctly injected 'seed_val' into parameter map
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
         """ Simulate random environmental dephasing phase noise insertion. """
-        # 🌟 [ANGIE'S COHERENT SEED - SYNTAX RESOLVED] Rigorously locked the scope of the worldline seed!
         if seed_val is not None:
             np.random.seed(int(seed_val) + self.current_step)
                             
@@ -74,37 +72,29 @@ class DocumentBasedSLWEEngine:
 
     def get_document_probability_density(self, t=1.0):
         """ 
-        [PHYSICS CLOSURE: INTERFEROMETRY SOLVER OPTIMIZATION]
-        Removes the legacy absolute-value blind spots. Blends full complex wavefields 
-        together with complete composite phase terms BEFORE extracting magnitude squares.
-        Guarantees clear topological profile asymmetry when P-gates are active!
+        🌟 [PHYSICS PERFECT CLOSURE: GENUINE LA COUR INTERFEROMETRY]
+        Rigorously implements separate spatiotemporal local phase factors for Left and Right waves
+        BEFORE magnitude squaring, completely liberating the cross-interferometric terms!
         """
         x_grid = np.linspace(-20, 20, 500)
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
         
-        # Extract active field state complex weights from registers
+        # Extract active field state complex weights from registers (Voltage/Field Amplitudes)
         a_complex = self.signal_vector[0]
         b_complex = self.signal_vector[1] if self.dimension > 1 else 0j
         
-        weight_a = float(np.abs(a_complex)**2)
-        weight_b = float(np.abs(b_complex)**2)
-        w_total = weight_a + weight_b + 1e-9
-        w_a, w_b = weight_a / w_total, weight_b / w_total
-        
-        # Reconstruct spatial envelopes matching physical velocity profiles
+        # Reconstruct separate spatial envelopes matching physical velocity profiles
         envelope_a = np.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
         envelope_b = np.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
-        composite_envelope = envelope_a * w_a + envelope_b * w_b
         
-        # Formulate unified spatiotemporal complex phases Theta(x, t) homomorphic to HSQ
-        time_phase = (w_a * self.omega_L + w_b * self.omega_R) * t
-        space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid + (w_b * self.phi)
-        composite_phase = time_phase + space_phase
+        phase_L = self.k_L * x_grid + self.omega_L * t
+        phase_R = (self.k_R - self.k_delta) * x_grid + self.omega_R * t + self.phi
         
-        # Reconstruct complex wave fields live to enforce true constructive/destructive interference
-        xi_classical = composite_envelope * (a_complex + b_complex) * np.exp(1j * composite_phase)
+        # 🌟 [LA COUR INTERFEROMETRY RULE] 
+        xi_classical = a_complex * envelope_a * np.exp(1j * phase_L) + \
+                       b_complex * envelope_b * np.exp(1j * phase_R)
         
-        # Extract true normalized intensity mapping profiles
+        # Extract true normalized intensity mapping profiles (Poynting Intensity Vector)
         prob_dist = np.abs(xi_classical)**2
         total_sum = np.sum(prob_dist)
         if total_sum > 0:
@@ -119,7 +109,6 @@ def route_reset():
     global slwe_engine
     data = request.get_json(silent=True) or {}
     
-    # 🌟 Allows dynamic rescaling during controller handshakes
     requested_qubits = data.get("num_qubits")
     if requested_qubits is not None:
         user_qubits = int(requested_qubits)
@@ -170,12 +159,10 @@ def route_evolve():
         data = request.args
         noise = float(data.get('noise', 0.0))
         t = float(data.get('t', 1.0))
-        # 🌟 [CRITICAL FIXED] Properly captured the fallback seed value under GET scopes
         seed_val = data.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
         
     if noise > 0: 
-        # 🌟 Unsealed seed parameters to guarantee real-physics dephasing distribution
         slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
         
     prob_dist = slwe_engine.get_document_probability_density(t=t)
