@@ -81,6 +81,8 @@ def generate_fallback_dispersion_profile(config_id):
 def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     """
     🌟 [GENUINE QUANTUM INTERFEROMETRY VIA IBM QISKIT-AER]
+    Fully aligned with Angie's single-source Hamiltonian trace constraint:
+    omega_L = omega_R = omega_0.
     """
     qc = QuantumCircuit(1)
     qc.h(0)  
@@ -94,6 +96,12 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     a_complex = amplitudes[0]
     b_complex = amplitudes[1]
     
+    # 🌟 提取歸一化機率幅權重，忠實還原哈密頓量 Trace 軌跡
+    weight_a = float(np.abs(a_complex)**2)
+    weight_b = float(np.abs(b_complex)**2)
+    w_total = weight_a + weight_b + 1e-9
+    w_a, w_b = weight_a / w_total, weight_b / w_total
+    
     t = steps * 0.1
     sigma_0 = 2.0
     vg = 0.8
@@ -104,11 +112,15 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     envelope_a = np.exp(-((x_mesh + center_shift)**2) / (2 * current_sigma**2))
     envelope_b = np.exp(-((x_mesh - center_shift)**2) / (2 * current_sigma**2))
     
-    omega_L, omega_R = 2.0, 2.0
+    # 🌟 [SINGLE-SOURCE FREQUENCY WELDED] 統一銲接為單一存在來源 omega_0
+    omega_0 = 2.0
     k_L, k_R = 1.2, -1.2
     
-    phase_A = (k_L * x_mesh + omega_L * t)
-    phase_B = (k_R * x_mesh + omega_R * t) + phi_theoretical
+    # 🌟 [ANGIE'S COHERENT UPDATE] 時間相位完全對齊 omega_0 * (w_a + w_b) * t
+    time_phase = omega_0 * (w_a + w_b) * t
+    
+    phase_A = (k_L * x_mesh + time_phase)
+    phase_B = (k_R * x_mesh + time_phase) + phi_theoretical
     
     xi_qiskit = a_complex * envelope_a * np.exp(1j * phase_A) + \
                 b_complex * envelope_b * np.exp(1j * phase_B)
@@ -140,7 +152,7 @@ if __name__ == "__main__":
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     
-    NUM_SEEDS = 20 
+    NUM_SEEDS = 20
     EVOLVE_STEPS = 10  
     target_noise = 0.10  
     x_axis = np.linspace(-20, 20, 500)
