@@ -96,7 +96,6 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     a_complex = amplitudes[0]
     b_complex = amplitudes[1]
     
-    # 🌟 提取歸一化機率幅權重，忠實還原哈密頓量 Trace 軌跡
     weight_a = float(np.abs(a_complex)**2)
     weight_b = float(np.abs(b_complex)**2)
     w_total = weight_a + weight_b + 1e-9
@@ -112,11 +111,9 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     envelope_a = np.exp(-((x_mesh + center_shift)**2) / (2 * current_sigma**2))
     envelope_b = np.exp(-((x_mesh - center_shift)**2) / (2 * current_sigma**2))
     
-    # 🌟 [SINGLE-SOURCE FREQUENCY WELDED] 統一銲接為單一存在來源 omega_0
     omega_0 = 2.0
     k_L, k_R = 1.2, -1.2
     
-    # 🌟 [ANGIE'S COHERENT UPDATE] 時間相位完全對齊 omega_0 * (w_a + w_b) * t
     time_phase = omega_0 * (w_a + w_b) * t
     
     phase_A = (k_L * x_mesh + time_phase)
