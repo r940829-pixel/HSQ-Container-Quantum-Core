@@ -35,7 +35,7 @@ Y_grid = R * np.sin(THETA)
 current_images = []
 
 def init():
-    titles = ["Angie's HSQ Parametric Core", "Classical SLWE (Linear Wave Contraction)"]
+    titles = ["HSQ Parametric Core", "Classical SLWE (Linear Wave Contraction)"]
     for ax, title in zip([ax1, ax2], titles):
         ax.set_facecolor('black')
         ax.set_xticks([])
