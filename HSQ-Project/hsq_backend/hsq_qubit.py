@@ -133,7 +133,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         
         # 3. Formulate the simplified single-source time phase index
         # 🌟 [CRITICAL REFACTORED] Simplified because w_a*omega_0 + w_b*omega_0 = omega_0
-        time_phase = self.omega_0 * t
+        time_phase = self.omega_0 * (w_a + w_b) * t
         
         space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid + (w_b * self.phi)
         composite_phase = time_phase + space_phase
