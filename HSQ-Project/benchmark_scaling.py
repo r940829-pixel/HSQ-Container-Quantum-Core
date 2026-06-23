@@ -156,7 +156,7 @@ def execute_live_hardware_stress_run():
     ax1.axhline(y=host_total_ram_gb, color='#CC0000', linestyle=':', linewidth=1.5)
     ax1.text(scales_array[1], host_total_ram_gb * 0.93, 'HOST PHYSICAL RAM CEILING (OOM CRASH)', color='#CC0000', fontsize=8, fontweight='bold', fontname='Times New Roman')
     
-    # 🌟 [ANGIE'S主權校準] Updated axis labels to perfectly reflect Angie's system ownership
+    # 🌟  Updated axis labels to perfectly reflect Angie's system ownership
     ax2 = ax1.twinx()  
     ax2.set_ylabel("HSQ Volumetric RAM Opening (GB)", color=color_hsq, fontsize=11, fontname='Times New Roman')
     line_hsq = ax2.plot(scales_array, hsq_ram_data, marker='s', linestyle='--', color=color_hsq, linewidth=2.0, label='HSQ Parametric Core (Distributed Clusters)')[0]
