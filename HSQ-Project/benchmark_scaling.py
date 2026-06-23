@@ -158,7 +158,7 @@ def execute_live_hardware_stress_run():
     
     # 🌟 [ANGIE'S主權校準] Updated axis labels to perfectly reflect Angie's system ownership
     ax2 = ax1.twinx()  
-    ax2.set_ylabel("Angie's HSQ Volumetric RAM Opening (GB)", color=color_hsq, fontsize=11, fontname='Times New Roman')
+    ax2.set_ylabel("HSQ Volumetric RAM Opening (GB)", color=color_hsq, fontsize=11, fontname='Times New Roman')
     line_hsq = ax2.plot(scales_array, hsq_ram_data, marker='s', linestyle='--', color=color_hsq, linewidth=2.0, label='HSQ Parametric Core (Distributed Clusters)')[0]
     ax2.tick_params(axis='y', labelcolor=color_hsq)
     ax2.set_ylim(0, max(hsq_ram_data) * 1.3) 
