@@ -1,8 +1,9 @@
 # ==============================================================================
 # WP1, WP3 & WP4: ALGORITHMIC QUANTUM RANDOM WALK IBM QISKIT REAL EVOLUTION SUITE
 # [MAXIMUM COMPLIANCE - POWERED BY IBM QISKIT & QISKIT-AER QUANTUM EMULATOR]
-# Fully upgraded with genuine Quantum Circuits to drive precise Metrology baselines.
-# Perfectly resolves the complex field interferometry constraints for Table II.
+# Upgraded by Angie: Removed all mathematical fallback patches. If microservices
+# are offline, data yields absolute zero energy to guarantee strict honesty.
+# Fully aligned with the single-source constraint: omega_L = omega_R = omega_0.
 # ==============================================================================
 
 import requests
@@ -16,7 +17,7 @@ from qiskit_aer import AerSimulator
 from qiskit.quantum_info import Statevector
 
 print("======================================================================")
-print("===  WP1 & WP4: Angie's IBM Qiskit Aer Evolution Suite (N=1)       ===")
+print("===  WP1 & WP4: Angie's IBM Qiskit Aer Evolution Suite (Zero Fallback)===")
 print("======================================================================")
 
 class LiveTargetWalker:
@@ -28,7 +29,7 @@ class LiveTargetWalker:
         """ Strictly flushes the remote registry prior to each coherent run. """
         custom_headers = {"Connection": "close"}
         try:
-            requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=0.8)
+            requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=0.5)
         except:
             pass
         time.sleep(0.01)
@@ -37,23 +38,23 @@ class LiveTargetWalker:
         """ Implements Angie's gate orchestration across the distributed network. """
         custom_headers = {"Connection": "close"}
         
-        # STAGE A: GATE INITIALIZATION & PHASE ABLATION PREPARATION
+        # STAGE A: GATE INITIALIZATION
         try:
-            requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=1.0)
+            requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=0.8)
             if config_id in ["B", "D"]:
                 fixed_delta_phi = 0.05  
                 requests.post(f"{self.url}/instruction", 
                               json={"gate": "p", "delta_phi": fixed_delta_phi, "seed": seed_val}, 
                               headers=custom_headers, 
-                              timeout=1.0)
-        except Exception as e:
+                              timeout=0.8)
+        except:
             pass
             
-        # STAGE B: ACCUMULATIVE SPATIOTEMPORAL WALK & NOISE INJECTION LOOP
+        # STAGE B: ACCUMULATIVE SPATIOTEMPORAL WALK LOOP
         final_density = None
         for _ in range(steps):
             try:
-                res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id, "seed": seed_val}, headers=custom_headers, timeout=2.5)
+                res = requests.post(f"{self.url}/evolve", json={"noise": noise_level, "config_id": config_id, "seed": seed_val}, headers=custom_headers, timeout=1.5)
                 if res.status_code == 200:
                     final_density = np.array(res.json().get('probability_density'))
             except:
@@ -62,27 +63,15 @@ class LiveTargetWalker:
         if final_density is not None and final_density.sum() > 0:
             return final_density / final_density.sum() 
             
-        return generate_fallback_dispersion_profile(config_id)
-
-def generate_fallback_dispersion_profile(config_id):
-    """ Physically-sound macro diffusion fallback profile """
-    x_mesh = np.linspace(-20, 20, 500)
-    if config_id == "D":
-        sigma = 3.2
-        profile = 0.5 * np.exp(-((x_mesh + 2.5)**2) / (2 * sigma**2)) + 0.5 * np.exp(-((x_mesh - 2.5)**2) / (2 * sigma**2))
-    elif config_id in ["A", "C"]:
-        sigma = 6.5  
-        profile = np.exp(-(x_mesh**2) / (2 * sigma**2))
-    else: 
-        sigma = 5.8  
-        profile = 0.6 * np.exp(-((x_mesh + 1.0)**2) / (2 * sigma**2)) + 0.4 * np.exp(-((x_mesh - 1.0)**2) / (2 * sigma**2))
-    return profile / profile.sum()
+        # 🚨 [CRITICAL DISCOVERY - NO MATHEMATICAL PATCHES] 
+        # Bypasses Gaussian fallback. Returns strict absolute zeros if service node is offline.
+        return np.zeros(500)
 
 def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     """
     🌟 [GENUINE QUANTUM INTERFEROMETRY VIA IBM QISKIT-AER]
     Fully aligned with Angie's single-source Hamiltonian trace constraint:
-    omega_L = omega_R = omega_0.
+    omega_L = omega_R = omega_0 = 2.0.
     """
     qc = QuantumCircuit(1)
     qc.h(0)  
@@ -111,9 +100,9 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
     envelope_a = np.exp(-((x_mesh + center_shift)**2) / (2 * current_sigma**2))
     envelope_b = np.exp(-((x_mesh - center_shift)**2) / (2 * current_sigma**2))
     
+    # 🌟 Mother Origin Single Frequency Alignment (Rigorous Trace Protective Base)
     omega_0 = 2.0
     k_L, k_R = 1.2, -1.2
-    
     time_phase = omega_0 * (w_a + w_b) * t
     
     phase_A = (k_L * x_mesh + time_phase)
@@ -127,6 +116,10 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh):
 
 def quantify_metrics(p_mesh, q_ideal):
     """ Computes fundamental quantum metrology indices against the analytical ground truth. """
+    # If the vector is a dead zero block (offline state), lock metrics to zero boundary conditions
+    if np.sum(p_mesh) == 0:
+        return 0.0, 1.0, 0.0, 0.0
+        
     p_mesh = np.clip(p_mesh, 1e-12, 1.0) / np.sum(p_mesh)
     q_ideal = np.clip(q_ideal, 1e-12, 1.0) / np.sum(q_ideal)
     
@@ -209,22 +202,24 @@ if __name__ == "__main__":
         ("D", "Config D: HSQ Parametric Core II (P-Gate Enforced)", "D")
     ]
     
-    # Pre-calculate BOTH theoretical baselines using real IBM Qiskit-Aer
     q_theory_symmetric = execute_ibm_qiskit_aer_ground_truth(EVOLVE_STEPS, "A", x_axis)
     q_theory_asymmetric = execute_ibm_qiskit_aer_ground_truth(EVOLVE_STEPS, "D", x_axis)
     
     for cid, name, theory_type in configs_meta:
         matrix = np.array(loaded_data[cid])
-        
         q_dynamic_reference = execute_ibm_qiskit_aer_ground_truth(EVOLVE_STEPS, theory_type, x_axis)
         
-        residuals = np.array([np.sqrt(np.sum((seed_profile - q_dynamic_reference)**2)) for seed_profile in matrix])
-        median_res = np.median(residuals)
-        std_res = np.std(residuals) + 1e-9
-        valid_indices = np.where(abs(residuals - median_res) <= 1.5 * std_res)[0]
-        if len(valid_indices) == 0: valid_indices = np.arange(len(matrix))
-        
-        validated_profiles[cid] = np.mean(matrix[valid_indices], axis=0)
+        # Pure array filtering mapping rows containing valid calculations
+        valid_rows = [row for row in matrix if np.sum(row) > 0]
+        if len(valid_rows) == 0:
+            validated_profiles[cid] = np.zeros(500)
+        else:
+            residuals = np.array([np.sqrt(np.sum((r - q_dynamic_reference)**2)) for r in valid_rows])
+            median_res = np.median(residuals)
+            std_res = np.std(residuals) + 1e-9
+            valid_indices = np.where(abs(residuals - median_res) <= 1.5 * std_res)[0]
+            if len(valid_indices) == 0: valid_indices = np.arange(len(valid_rows))
+            validated_profiles[cid] = np.mean(np.array(valid_rows)[valid_indices], axis=0)
         
         for idx in range(len(matrix)):
             raw_stats[cid].append(quantify_metrics(matrix[idx], q_dynamic_reference))
@@ -260,13 +255,13 @@ if __name__ == "__main__":
     # Render FIG 2 with dual-baseline anchors matching physical conditions
     fig_qrw, ax_qrw = plt.subplots(figsize=(9, 4.5))
     
-    ax_qrw.plot(x_mesh:=x_axis, q_theory_symmetric, 'k:', label='IBM Qiskit Ground Truth (Symmetric - A/C)', linewidth=1.5, alpha=0.5)
-    ax_qrw.plot(x_mesh, q_theory_asymmetric, 'b:', label='IBM Qiskit Ground Truth (Asymmetric - B/D)', linewidth=1.8, alpha=0.8)
+    ax_qrw.plot(x_axis, q_theory_symmetric, 'k:', label='IBM Qiskit Ground Truth (Symmetric - A/C)', linewidth=1.5, alpha=0.5)
+    ax_qrw.plot(x_axis, q_theory_asymmetric, 'b:', label='IBM Qiskit Ground Truth (Asymmetric - B/D)', linewidth=1.8, alpha=0.8)
     
-    ax_qrw.plot(x_mesh, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
-    ax_qrw.plot(x_mesh, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
-    ax_qrw.plot(x_mesh, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
-    ax_qrw.plot(x_mesh, validated_profiles["D"], color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
+    ax_qrw.plot(x_axis, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
+    ax_qrw.plot(x_axis, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
+    ax_qrw.plot(x_axis, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
+    ax_qrw.plot(x_axis, validated_profiles["D"], color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
     
     ax_qrw.set_xlabel('Spatial Grid Position Coordinate (x)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_ylabel('Cross-Validated Ensemble Probability Density P(x)', fontsize=11, fontname='Times New Roman')
