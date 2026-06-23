@@ -96,7 +96,7 @@ source myenv/bin/activate
 ```
 Ensure your Python runtime environment has the required auditing libraries installed:
 ```bash
-pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil
+pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil redis
 ```
 
 ---
