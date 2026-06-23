@@ -189,9 +189,9 @@ def execute_live_hardware_stress_run():
     ax_ev1.tick_params(axis='y', labelcolor=color_heavy)
     ax_ev1.grid(True, linestyle=':', alpha=0.5)
     
-    # 🌟 [ANGIE'S主權校準] Updated time series latency axis to match Angie's ownership
+    # 🌟  Updated time series latency axis to match Angie's ownership
     ax2_ev = ax_ev1.twinx()
-    ax2_ev.set_ylabel("Angie's HSQ Accumulative Latency (ms)", color=color_hsq, fontsize=11, fontname='Times New Roman')
+    ax2_ev.set_ylabel("HSQ Accumulative Latency (ms)", color=color_hsq, fontsize=11, fontname='Times New Roman')
     l_ev_h = ax2_ev.plot(steps_axis, hsq_ts, marker='s', linestyle='--', color=color_hsq, linewidth=2.2, label='HSQ Distributed Cluster Accumulative Runtime')[0]
     ax2_ev.tick_params(axis='y', labelcolor=color_hsq)
     
