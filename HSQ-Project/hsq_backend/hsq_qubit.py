@@ -52,7 +52,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         """
         # --- 🌟 SINGLE-SOURCE FREQUENCY BINDING ---
         # Rigorously welded into a single unified origin frequency baseline
-        self.omega_0 = 2.0  # Replaces separate omega_L and omega_R constraints
+        self.omega_0 = 2.0  
         
         self.k_L = 1.2
         self.k_R = -1.2
