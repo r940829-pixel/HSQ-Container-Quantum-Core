@@ -102,6 +102,7 @@ class HilbertSpaceSpinorQuasiparticleService:
             
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise  
+        self.b = self.b * np.exp(1j * noise)
         self.enforce_gauge_protection()
 
     def extract_topological_metric(self):
