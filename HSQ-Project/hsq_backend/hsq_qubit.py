@@ -3,7 +3,6 @@
 # [REFACTORED FOR RIGOROUS ACADEMIC STANDARDS AND SINGLE-SOURCE FREQUENCY WELDED]
 # Contains the numeric state register, GPU-accelerated spatial map solver, 
 # and localized gate orchestration APIs for a single logic qubit emulator node.
-# Fully aligned with the single-source constraint: omega_L = omega_R = omega_0.
 # ==============================================================================
 
 import os
@@ -119,12 +118,6 @@ class HilbertSpaceSpinorQuasiparticleService:
     def compute_current_xi(self, t=1.0):
         """ Solves the spatiotemporal evolution equation over a 500-point localized grid """
         x_grid = xp.linspace(-20, 20, 500)
-        
-        # 1. Harvest component weights from state registers
-        weight_a = float(np.abs(self.a)**2)
-        weight_b = float(np.abs(self.b)**2)
-        w_total = weight_a + weight_b + 1e-9
-        w_a, w_b = weight_a / w_total, weight_b / w_total
         
         # 2. Compute the spatiotemporal Gaussian envelope
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
