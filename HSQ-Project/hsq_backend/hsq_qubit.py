@@ -129,17 +129,15 @@ class HilbertSpaceSpinorQuasiparticleService:
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
         envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
-        envelope = envelope_a * w_a + envelope_b * w_b
         
         # 3. Formulate the simplified single-source time phase index
-        # 🌟 [CRITICAL REFACTORED] Simplified because w_a*omega_0 + w_b*omega_0 = omega_0
-        time_phase = self.omega_0 * (w_a + w_b) * t
+        time_phase = self.omega_0  * t
         
-        space_phase = (w_a * self.k_L + w_b * self.k_R - self.k_delta) * x_grid + (w_b * self.phi)
-        composite_phase = time_phase + space_phase
+        phase_L = (self.k_L - self.k_delta) * x_grid + time_phase
+        phase_R = (self.k_R - self.k_delta) * x_grid + time_phase + self.phi
         
         # 4. Extrapolate macro continuous wave distribution profile
-        xi = envelope * (self.a + self.b) * xp.exp(1j * composite_phase)
+        xi = self.a * envelope_a * xp.exp(1j * phase_L) + self.b * envelope_b * xp.exp(1j * phase_R)
         
         # 5. Extract normalized probability density distribution mapping
         prob = xp.abs(xi)**2
