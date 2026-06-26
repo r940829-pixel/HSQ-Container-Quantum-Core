@@ -25,13 +25,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
-# SCIENTIFIC & CLOUD-NATIVE STACK INSTALLATION
+# SCIENTIFIC & HIGH-CONCURRENCY ASYNCHRONOUS WEBSERVER STACK
 # Provisioning scientific computing layers (NumPy), GPU-accelerated parallel 
 # matrix engines (CuPy explicitly compiled for CUDA 11.x platforms), the 
-# microservice Restful communication tier (Flask), and the Redis client driver
-# for cross-container non-local tensor channel side-talk.
+# Redis client driver for non-local tensor side-talk, and replacing the 
+# single-threaded Flask daemon with Gunicorn + Gevent high-performance 
+# asynchronous co-routine WSGI engine to mitigate CPU context switching overheads.
 # ==============================================================================
-RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask redis
+RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask redis gunicorn gevent
 
 # ==============================================================================
 # CONTAINER ENVIRONMENT ANCHORING
@@ -55,8 +56,9 @@ COPY hsq_qubit.py /app/
 EXPOSE 5000
 
 # ==============================================================================
-# CONTAINER LIFECYCLE CONTROLLER
-# Designated runtime trigger command to initiate the real-time continuous wave 
-# PDE solver service upon orchestrator invocation.
+# HIGH-CONCURRENCY LIFECYCLE CONTROLLER (THE CPU-BOUND BREAKTHROUGH)
+# Initiates the WSGI application manager with 4 parallel workers bound to an 
+# asynchronous greenlet-driven event loop (gevent), effectively shielding the 
+# host OS from classical I/O blockades and multi-thread context-switch exhaustion.
 # ==============================================================================
-CMD ["python3", "hsq_qubit.py"]
+CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5000", "app:app"]
