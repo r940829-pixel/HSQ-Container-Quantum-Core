@@ -30,10 +30,10 @@ app = Flask(__name__)
 # ==============================================================================
 TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
 try:
-    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=6379, db=0, decode_responses=True)
+    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=2057, db=0, decode_responses=True)
     tensor_bus.ping()
     BUS_CONNECTED = True
-    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:6379")
+    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:2057")
 except redis.ConnectionError:
     tensor_bus = None
     BUS_CONNECTED = False
