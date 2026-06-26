@@ -62,9 +62,9 @@ def quick_deploy_network():
     if deploy_hsq and n_qubits > 1:
         print("\n[Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)...")
         # Launch lightweight Redis container as cross-node information exchange hub
-        redis_cmd = "sudo docker run -d --name hsq_tensor_bus -p 2057:2057 redis:alpine"
+        redis_cmd = "sudo docker run -d --name hsq_tensor_bus -p 2057:6379 redis:alpine redis-server --maxclients 10000"
         subprocess.run(redis_cmd, shell=True, stdout=subprocess.DEVNULL)
-        print("🚀 [Tensor Bus Active] Non-local information exchange channel established on Port 6379.")
+        print("🚀 [Tensor Bus Active] Non-local information exchange channel established on Port 2057.")
 
     if deploy_hsq:
         print("\n[Channel 1] Provisioning localized container-native HSQ secure topological qubit cluster nodes...")
