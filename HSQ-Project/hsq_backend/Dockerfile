@@ -61,4 +61,4 @@ EXPOSE 5000
 # asynchronous greenlet-driven event loop (gevent), effectively shielding the 
 # host OS from classical I/O blockades and multi-thread context-switch exhaustion.
 # ==============================================================================
-CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5000", "hsq_qubit:app"]
