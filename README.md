@@ -100,17 +100,6 @@ pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psuti
 ```
 ---
 
-### install cupy:
-step1:
-```bash
-pip install fastrlock
-```
-step2:
-```bash
-pip install cupy --no-binary :all:
-```
----
-
 ### remore all container
 To remore the container, enter the following command
 ```bash
