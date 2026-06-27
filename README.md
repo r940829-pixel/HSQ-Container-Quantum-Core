@@ -98,7 +98,17 @@ Ensure your Python runtime environment has the required auditing libraries insta
 ```bash
 pip install requests numpy scipy matplotlib pillow flask qiskit qiskit-aer psutil redis
 ```
+---
 
+### install cupy:
+step1:
+```bash
+pip install fastrlock
+```
+step2:
+```bash
+pip install cupy --no-binary :all:
+```
 ---
 
 ### remore all container
