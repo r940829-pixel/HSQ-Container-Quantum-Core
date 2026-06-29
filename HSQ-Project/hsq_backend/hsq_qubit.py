@@ -106,7 +106,8 @@ class HilbertSpaceSpinorQuasiparticleService:
         nanosecond_entropy = time.time_ns()
 
         if seed_val is not None:
-            actual_seed = (int(seed_val) * 1103515245 + char_sum + nanosecond_entropy + int(self.current_step))
+            time_mask = (nanosecond_entropy + int(self.current_step)) % (2**32 - 1)
+            actual_seed = (int(seed_val) ^ time_mask) * 31 + char_sum
         else:
             actual_seed = nanosecond_entropy + char_sum
         
