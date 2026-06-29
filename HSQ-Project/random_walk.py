@@ -59,7 +59,7 @@ class LiveTargetWalker:
 
     def force_hardware_reset(self, num_qubits=1):
         """ Forcibly flushes and re-allocates the remote complex-field register spaces """
-        custom_headers = {"Connection": "close"}
+        custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         try:
             requests.post(f"{self.url}/reset", json={"num_qubits": int(num_qubits)}, headers=custom_headers, timeout=1.0)
         except:
@@ -71,7 +71,7 @@ class LiveTargetWalker:
         Dynamically tracks timeline matrix blocks with zero hardcoding leaks.
         Perfectly maps noise, seeds, and execution time intervals down to CUDA arrays.
         """
-        custom_headers = {"Connection": "close"}
+        custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         self.force_hardware_reset(num_qubits=num_qubits)
 
         # STAGE A: GATE INITIALIZATION 
@@ -114,7 +114,8 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
     phi_theoretical = float(phase_delta) if config_id in ["B", "D"] else 0.0
     if config_id in ["B", "D"]: qc.p(phi_theoretical, 0)  
 
-    state = Statevector.from_instruction(qc)
+    # ✅ FIXED: Standardized IBM Qiskit Statevector extraction to match WP2 logic
+    state = Statevector(qc)
     amplitudes = state.data
     w_total = np.abs(amplitudes[0])**2 + np.abs(amplitudes[1])**2 + 1e-9
     w_a, w_b = np.abs(amplitudes[0])**2 / w_total, np.abs(amplitudes[1])**2 / w_total
@@ -263,11 +264,12 @@ if __name__ == "__main__":
     target_noise = 0.10        
     global_phase_delta = 0.05  
     
-    target_qubits = 1       
+    target_qubits = 1        
     
     x_axis = np.linspace(-20, 20, 500)
 
-    slwe_target = LiveTargetWalker(6000, "SLWE GPU Benchmark Node")
+    # ✅ FIXED: SLWE API precisely mapped to the newly defined container port 3000
+    slwe_target = LiveTargetWalker(3000, "SLWE GPU Benchmark Node")
     hsq_target = LiveTargetWalker(5011, "HSQ GPU Qubit Node")
     file_name = f"matrix_store_noise_{target_noise:.2f}.npy"
 
@@ -297,7 +299,7 @@ if __name__ == "__main__":
 
     for seed in range(NUM_SEEDS):
         current_seed = 1000 + seed
-        print(f" -> Orchestrating Seed {current_seed:<4} | Route: [SLWE:6000] <-> [HSQ:5011] | Target Noise: {target_noise}")
+        print(f" -> Orchestrating Seed {current_seed:<4} | Route: [SLWE:3000] <-> [HSQ:5011] | Target Noise: {target_noise}")
 
         dist_A = slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "A", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
         dist_B = slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "B", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
