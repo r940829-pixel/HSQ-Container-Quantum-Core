@@ -4,6 +4,7 @@
 # Fully Upgraded to FastAPI ASGI architecture to mitigate CPU overheads.
 # ==============================================================================
 
+import platform
 import time
 import os
 import threading
@@ -100,7 +101,7 @@ class HilbertSpaceSpinorQuasiparticleService:
             self.k_delta = 0.0  # FORCE PURGE
             return
 
-        machine_name = os.environ.get("HOSTNAME", "GPU_NODE_B")
+        machine_name = platform.node() or os.environ.get("HOSTNAME", "GPU_NODE_PROD")
         char_sum = sum(ord(c) for c in machine_name)
         nanosecond_entropy = time.time_ns()
 
