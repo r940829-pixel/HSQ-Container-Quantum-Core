@@ -29,10 +29,11 @@ app = Flask(__name__)
 # ==============================================================================
 TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
 try:
+    # 🌟 FIXED: Isolated from HSQ memory registers by docking strictly onto Port 1000
     tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=1000, db=0, decode_responses=True)
     tensor_bus.ping()
     BUS_CONNECTED = True
-    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:2057")
+    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:1000")
 except redis.ConnectionError:
     tensor_bus = None
     BUS_CONNECTED = False
@@ -223,28 +224,25 @@ def route_evolve():
     })
 
 # ==============================================================================
-# ENTRY POINT & RUNTIME BOOTSTRAPPER
+# ENTRY POINT & RUNTIME BOOTSTRAPPER (Optimized for WSGI workers initialization)
 # ==============================================================================
-if __name__ == "__main__":
-    print("======================================================================")
-    print("===        La Cour & Spreeuw Reference Framework: SLWE Node         ===")
-    print("======================================================================")
-    
-    # Check for automated Docker/System environment scale prior to interactive shell fallback
-    try:
-        env_scale = os.environ.get("SLWE_QUBITS_SCALE")
-        if env_scale is not None:
-            user_qubits = int(env_scale)
-            print(f" -> Automated boot detected. Scaling registers to N={user_qubits} via environment variable.")
-        else:
-            user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
-            user_qubits = int(user_input)
-    except (ValueError, KeyboardInterrupt, EOFError):
+print("======================================================================")
+print("===        La Cour & Spreeuw Reference Framework: SLWE Node         ===")
+print("======================================================================")
+
+try:
+    env_scale = os.environ.get("SLWE_QUBITS_SCALE")
+    if env_scale is not None:
+        user_qubits = int(env_scale)
+        print(f" -> Automated boot detected. Scaling registers to N={user_qubits} via environment variable.")
+    else:
         user_qubits = 1
-        print(f"\n -> Input bypassed or invalid. Falling back to default scale: N={user_qubits}")
-        
-    print(f"\n[Hardware Matrix Allocated] Deploying {user_qubits} classical channels ({2**user_qubits} dimensions).")
-    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
+except:
+    user_qubits = 1
     
-    print(f"=== [Daemon Activated] SLWE microservice standalone node live on Port 3000 ===")
+print(f"[Hardware Matrix Allocated] Deploying {user_qubits} classical channels ({2**user_qubits} dimensions).")
+slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
+
+if __name__ == "__main__":
+    # Fallback standalone execution runner
     app.run(host='0.0.0.0', port=3000, debug=False, threaded=True)
