@@ -4,6 +4,7 @@
 # Fully Upgraded to FastAPI ASGI architecture to mitigate CPU overheads.
 # ==============================================================================
 
+import time
 import os
 import threading
 import numpy as np
@@ -98,8 +99,18 @@ class HilbertSpaceSpinorQuasiparticleService:
         if noise_level <= 0.0:
             self.k_delta = 0.0  # FORCE PURGE
             return
-            
-        actual_seed = int(seed_val) + int(self.current_step) if seed_val is not None else None
+
+        machine_name = os.environ.get("COMPUTERNAME", os.environ.get("HOSTNAME", "DYNAMIC_GPU_NODE"))
+        machine_fingerprint = hash(machine_name) % 100000
+        hardware_time_entropy = int((time.time_ns() // 1000) % 100000)
+
+        if seed_val is not None:
+            actual_seed = (int(seed_val) + int(self.current_step)) ^ hardware_time_entropy ^ machine_fingerprint
+        else:
+            actual_seed = hardware_time_entropy ^ machine_fingerprint
+        
+        actual_seed = abs(actual_seed) % (2**31 - 1)
+        
         rng = np.random.default_rng(actual_seed)
         
         noise = rng.normal(0, noise_level)
