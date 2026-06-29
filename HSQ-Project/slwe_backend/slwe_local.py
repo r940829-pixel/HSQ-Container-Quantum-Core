@@ -6,9 +6,16 @@
 # ==============================================================================
 
 import os
+import sys
 import redis
 import numpy as np
 from flask import Flask, request, jsonify
+
+if sys.platform == 'win32':
+    cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin"
+    if os.path.exists(cuda_path):
+        os.add_dll_directory(cuda_path)
+    os.environ["PATH"] = cuda_path + os.path.pathsep + os.environ["PATH"]
 
 # ==============================================================================
 # HARDWARE ACCELERATION CORES BINDING LAYER (SLWE GPU WELDING)
@@ -139,7 +146,7 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         return [float(v) for v in prob.flatten()]
 
 
-slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=1)
+slwe_engine = None
 
 # ==============================================================================
 # 🤝 100% MIRRORED RESTFUL API DAEMON ROUTING GATEWAYS
@@ -149,10 +156,11 @@ slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=1)
 def route_reset():
     global slwe_engine
     data = request.get_json(silent=True) or {}
-    requested_qubits = data.get("num_qubits", 1)
+    requested_qubits = data.get("num_qubits")
+    user_qubits = int(requested_qubits) if requested_qubits is not None else slwe_engine.num_qubits
     
-    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=int(requested_qubits))
-    return jsonify({"status": "success", "msg": "SLWE qubit register reset successfully"})
+    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
+    return jsonify({"status": "success", "msg": f"SLWE qubit register reset successfully for N={user_qubits}"})
 
 @app.route('/ping', methods=['GET'])
 def route_ping():
@@ -160,7 +168,8 @@ def route_ping():
         "status": "ready",
         "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
         "cuda_accelerated": HAS_GPU,
-        "tensor_bus_active": BUS_CONNECTED
+        "tensor_bus_active": BUS_CONNECTED,
+        "configured_qubits": slwe_engine.num_qubits if slwe_engine else 0
     })
 
 @app.route('/instruction', methods=['POST'])
@@ -171,9 +180,10 @@ def route_instruction():
     
     if gate_name in ["h", "hadamard"]:
         slwe_engine.apply_hadamard_gate()
+        v_0 = slwe_engine.signal_vector[0]
         return jsonify({
             "status": "success", "gate": "Hadamard",
-            "a_magnitude": float(np.abs(cp.asnumpy(slwe_engine.signal_vector[0]))) if HAS_GPU else float(np.abs(slwe_engine.signal_vector[0]))
+            "a_magnitude": float(np.abs(cp.asnumpy(v_0))) if HAS_GPU else float(np.abs(v_0))
         })
     elif gate_name in ["x", "not"]:
         slwe_engine.apply_pauli_x_gate()
@@ -208,7 +218,6 @@ def route_evolve():
     slwe_engine.inject_phase_damping(noise_level, seed_val=seed_val)
     prob_dist = slwe_engine.compute_current_xi(t=t)
     
-    # Extract gauge mapping via devices
     v_0 = slwe_engine.signal_vector[0]
     gauge_val = float(np.abs(cp.asnumpy(v_0))**2) if HAS_GPU else float(np.abs(v_0)**2)
     
@@ -219,5 +228,26 @@ def route_evolve():
         "probability_density": prob_dist
     })
 
+# ==============================================================================
+# ==============================================================================
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=6000)
+    print("======================================================================")
+    print("===       La Cour & Spreeuw Reference Framework: SLWE Node         ===")
+    print("======================================================================")
+    
+    try:
+        user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
+        user_qubits = int(user_input)
+    except (ValueError, KeyboardInterrupt, EOFError):
+        try:
+            user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
+        except ValueError:
+            user_qubits = 1
+        print(f"\n -> Input bypassed. Falling back to configuration scale: N={user_qubits}")
+        
+    print(f"\n[Hardware Matrix Allocated] Deploying {user_qubits} classical channels ({2**user_qubits} dimensions).")
+    
+    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
+    
+    print(f"=== [Daemon Activated] SLWE microservice standalone node live on Port 6000 ===")
+    app.run(host='0.0.0.0', port=6000, debug=False, threaded=True)
