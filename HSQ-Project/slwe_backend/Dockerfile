@@ -1,64 +1,68 @@
 # ==============================================================================
-# BASE IMAGE CONFIGURATION
-# Leveraging the official NVIDIA CUDA 11.8 runtime on Ubuntu 22.04 LTS to 
-# ensure full architectural compatibility with baseline GPU hardware and stable
-# pass-through computing via the NVIDIA Container Toolkit.
+# CLASSICAL SIGNAL-BASED LINEAR WAVE EQUATION (SLWE) BENCHMARK NODE CONTAINER
+# BASE IMAGE: Leveraging the official NVIDIA CUDA 11.8 runtime on Ubuntu 22.04 LTS
+# to ensure full architectural compatibility with baseline GPU hardware.
 # ==============================================================================
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
 # ==============================================================================
-# ENVIRONMENT SANITIZATION
-# Suppress interactive dialog prompts during the apt-get package installation 
-# pipeline to enable fully automated and unattended DevOps container orchestration.
+# ENVIRONMENT SANITIZATION & LOGGING OPTIMIZATION
+# PYTHONUNBUFFERED=1 forces standard output and error streams to be unbuffered,
+# ensuring container log telemetry is transmitted to host monitors instantly.
 # ==============================================================================
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    APP_PORT=3000
 
 # ==============================================================================
 # CORE SYSTEM DEPENDENCIES
 # Synchronize package repositories and establish the core Python3 execution 
-# runtime along with the pip package management infrastructure.
-# Cache layers are aggressively purged to enforce a lightweight footprint.
+# runtime. Installs python-is-python3 to resolve internal execution symlinks.
 # ==============================================================================
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
-# SCIENTIFIC & HIGH-CONCURRENCY ASYNCHRONOUS WEBSERVER STACK
-# Provisioning scientific computing layers (NumPy), GPU-accelerated parallel 
-# matrix engines (CuPy explicitly compiled for CUDA 11.x platforms), the 
-# Redis client driver for non-local tensor side-talk, and replacing the 
-# single-threaded Flask daemon with Gunicorn + Gevent high-performance 
-# asynchronous co-routine WSGI engine to mitigate CPU context switching overheads.
+# SCIENTIFIC & HIGH-CONCURRENCY ASGI WEBSERVER STACK
+# Upgrades pip infrastructure and deploys the identical dependency manifest
+# used in the HSQ core to guarantee computational equivalence across node matrices.
 # ==============================================================================
-RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask redis gunicorn gevent
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir \
+    numpy \
+    scipy \
+    cupy-cuda11x \
+    redis \
+    fastapi \
+    pydantic \
+    uvicorn
 
 # ==============================================================================
 # CONTAINER ENVIRONMENT ANCHORING
-# Define and instantiate the strict operating folder within the sandboxed 
-# container runtime topology.
+# Define and instantiate the strict operating folder within the sandboxed runtime.
 # ==============================================================================
 WORKDIR /app
 
 # ==============================================================================
 # SOURCE CODE TRANSLATION & DECOUPLING
-# Inject the microscopic physics engine backend script into the current active 
-# hardware manifest layer.
+# Inject the classical signal benchmark solver backend into the container topology.
 # ==============================================================================
-COPY slwe_local.py /app/
+COPY slwe_node.py /app/
 
 # ==============================================================================
 # NETWORKING BOUNDARY INTERFACE
-# Broadcast and expose the localized runtime daemon communication port to the 
-# host loopback channel (allocated from Port 3000 by the orchestrator).
+# Broadcast and expose the localized runtime daemon communication port.
 # ==============================================================================
-EXPOSE 3000
+EXPOSE ${APP_PORT}
 
 # ==============================================================================
-# HIGH-CONCURRENCY LIFECYCLE CONTROLLER (THE CPU-BOUND BREAKTHROUGH)
-# Initiates the WSGI application manager with 4 parallel workers bound to an 
-# asynchronous greenlet-driven event loop (gevent), effectively shielding the 
-# host OS from classical I/O blockades and multi-thread context-switch exhaustion.
+# HIGH-CONCURRENCY LIFECYCLE CONTROLLER (THE ASGI BREAKTHROUGH)
+# Launches the Uvicorn production server to handle asynchronous network ingestion.
+# Threads and tasks are dynamically dispatched into safe execution layers,
+# mitigating CPU context switching overheads without fracturing CUDA Contexts.
 # ==============================================================================
-CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:3000", "slwe_local:app"]
+CMD ["uvicorn", "slwe_node:app", "--host", "0.0.0.0", "--port", "3000"]
