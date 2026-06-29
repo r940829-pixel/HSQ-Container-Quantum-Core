@@ -1,64 +1,59 @@
 # ==============================================================================
-# BASE IMAGE CONFIGURATION
-# Leveraging the official NVIDIA CUDA 11.8 runtime on Ubuntu 22.04 LTS to 
-# ensure full architectural compatibility with baseline GPU hardware and stable
-# pass-through computing via the NVIDIA Container Toolkit.
+# HILBERT-SPACE SPINOR QUASIPARTICLE (HSQ) FASTAPI MICROSERVICE
+# BASE IMAGE: Official NVIDIA CUDA 11.8 Runtime on Ubuntu 22.04 LTS
 # ==============================================================================
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
 # ==============================================================================
-# ENVIRONMENT SANITIZATION
-# Suppress interactive dialog prompts during the apt-get package installation 
-# pipeline to enable fully automated and unattended DevOps container orchestration.
+# ENVIRONMENT ANCHORING & SANITIZATION
 # ==============================================================================
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    APP_PORT=5000
 
 # ==============================================================================
 # CORE SYSTEM DEPENDENCIES
-# Synchronize package repositories and establish the core Python3 execution 
-# runtime along with the pip package management infrastructure.
-# Cache layers are aggressively purged to enforce a lightweight footprint.
+# Establish the core Python3 execution runtime.
 # ==============================================================================
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
 # SCIENTIFIC & HIGH-CONCURRENCY ASYNCHRONOUS WEBSERVER STACK
-# Provisioning scientific computing layers (NumPy), GPU-accelerated parallel 
-# matrix engines (CuPy explicitly compiled for CUDA 11.x platforms), the 
-# Redis client driver for non-local tensor side-talk, and replacing the 
-# single-threaded Flask daemon with Gunicorn + Gevent high-performance 
-# asynchronous co-routine WSGI engine to mitigate CPU context switching overheads.
+# Provisioning scientific computing layers (NumPy, SciPy for matrix exponentials), 
+# GPU-accelerated parallel matrix engines (CuPy), Redis driver, 
+# and the FastAPI + Uvicorn asynchronous framework.
 # ==============================================================================
-RUN pip3 install --no-cache-dir numpy cupy-cuda11x flask redis gunicorn gevent
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir \
+    numpy \
+    scipy \
+    cupy-cuda11x \
+    redis \
+    fastapi \
+    pydantic \
+    uvicorn
 
 # ==============================================================================
-# CONTAINER ENVIRONMENT ANCHORING
-# Define and instantiate the strict operating folder within the sandboxed 
-# container runtime topology.
+# WORKSPACE INITIALIZATION
 # ==============================================================================
 WORKDIR /app
 
-# ==============================================================================
-# SOURCE CODE TRANSLATION & DECOUPLING
-# Inject the microscopic physics engine backend script into the current active 
-# hardware manifest layer.
-# ==============================================================================
+# Copy the HSQ microservice physics engine into the container topology
 COPY hsq_qubit.py /app/
 
-# ==============================================================================
-# NETWORKING BOUNDARY INTERFACE
-# Broadcast and expose the localized runtime daemon communication port to the 
-# host loopback channel (allocated from Port 5011 onwards by the orchestrator).
-# ==============================================================================
-EXPOSE 5000
+# Expose the designated local runtime communication port
+EXPOSE ${APP_PORT}
 
 # ==============================================================================
-# HIGH-CONCURRENCY LIFECYCLE CONTROLLER (THE CPU-BOUND BREAKTHROUGH)
-# Initiates the WSGI application manager with 4 parallel workers bound to an 
-# asynchronous greenlet-driven event loop (gevent), effectively shielding the 
-# host OS from classical I/O blockades and multi-thread context-switch exhaustion.
+# LIFECYCLE CONTROLLER (THE FASTAPI/UVICORN BREAKTHROUGH)
+# Initiates the ASGI application manager via Uvicorn.
+# Running a single worker relies on FastAPI's native async event loop and 
+# threadpool delegation, perfectly shielding the host OS from I/O blockades 
+# without breaking the CUDA context or IBM Mutex locks.
 # ==============================================================================
-CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5000", "hsq_qubit:app"]
+CMD ["uvicorn", "hsq_qubit:app", "--host", "0.0.0.0", "--port", "5000"]
