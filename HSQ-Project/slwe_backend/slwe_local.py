@@ -2,8 +2,7 @@
 # CLASSICAL SIGNAL-BASED LINEAR WAVE EQUATION (SLWE) BENCHMARK NODE
 # [MAXIMUM PERFORMANCE COMPLIANCE - RIGOROUS LA COUR INTERFEROMETRY RENDER]
 # Implements the multi-qubit classical amplitude modulation framework aligned 
-# with the formulations of Spreeuw 2001 & La Cour 2015/2016.
-# Fully upgraded with localized complex-field wave packet interferometry.
+# with Spreeuw 2001 & La Cour 2015/2016. Completely bug-fixed for zero-noise flushing.
 # ==============================================================================
 
 import numpy as np
@@ -43,21 +42,28 @@ class DocumentBasedSLWEEngine:
         self._enforce_normalization_safeguard()
 
     def apply_phase_rotation_to_all(self, delta_phi):
-        """ 
-        [IBM Qiskit Compliant Phase Gate Rotation]
-        Applies a deterministic discrete phase change across the 1-state subcomponents.
-        Enforces absolute overwriting rule to follow unitary metrology specifications.
-        """
+        """ Applies a deterministic discrete phase change across the 1-state subcomponents. """
         self.phi = delta_phi
         for i in range(1, self.dimension):
             self.signal_vector[i] = self.signal_vector[i] * np.exp(1j * delta_phi)
         self._enforce_normalization_safeguard()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        """ Simulate random environmental dephasing phase noise insertion. """
+        """ 
+        🌟 [FIXED NOISE SANITIZATION CORE - SLWE EDITION]
+        If noise_level is exactly 0, forces k_delta to instantly vanish.
+        Otherwise, samples from the exact seed timeline to match the HSQ manifestation.
+        """
+        if noise_level <= 0.0:
+            self.k_delta = 0.0  # ✅ FORCE PURGE: Wipes out residual noise leakage
+            return
+            
         if seed_val is not None:
-            np.random.seed(int(seed_val) + self.current_step)
-                            
+            try:
+                np.random.seed(int(seed_val) + int(self.current_step))
+            except (ValueError, TypeError):
+                pass
+                    
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise
         for i in range(1, self.dimension):
@@ -71,15 +77,11 @@ class DocumentBasedSLWEEngine:
             self.signal_vector = self.signal_vector / np.sqrt(total_power)
 
     def get_document_probability_density(self, t=1.0):
-        """ 
-        🌟 [PHYSICS PERFECT CLOSURE: GENUINE LA COUR INTERFEROMETRY]
-        Rigorously implements separate spatiotemporal local phase factors for Left and Right waves
-        BEFORE magnitude squaring, completely liberating the cross-interferometric terms!
-        """
+        """ Physics Perfect Closure: Genuine La Cour Interferometry """
         x_grid = np.linspace(-20, 20, 500)
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
         
-        # Extract active field state complex weights from registers (Voltage/Field Amplitudes)
+        # Extract active field state complex weights from registers
         a_complex = self.signal_vector[0]
         b_complex = self.signal_vector[1] if self.dimension > 1 else 0j
         
@@ -90,11 +92,9 @@ class DocumentBasedSLWEEngine:
         phase_L = self.k_L * x_grid + self.omega_L * t
         phase_R = (self.k_R - self.k_delta) * x_grid + self.omega_R * t + self.phi
         
-        # 🌟 [LA COUR INTERFEROMETRY RULE] 
         xi_classical = a_complex * envelope_a * np.exp(1j * phase_L) + \
                        b_complex * envelope_b * np.exp(1j * phase_R)
         
-        # Extract true normalized intensity mapping profiles (Poynting Intensity Vector)
         prob_dist = np.abs(xi_classical)**2
         total_sum = np.sum(prob_dist)
         if total_sum > 0:
@@ -121,6 +121,17 @@ def route_reset():
         "msg": f"SLWE engine matrix reset and reallocated successfully for N={user_qubits}"
     })
 
+@app.route('/ping', methods=['GET'])
+def route_ping():
+    global slwe_engine
+    return jsonify({
+        "status": "ready",
+        "device": "CPU Simulation Mode" if slwe_engine else "Unknown Core",
+        "mode": "Classical Signal Emulation (SLWE)",
+        "configured_qubits": slwe_engine.num_qubits if slwe_engine else 0,
+        "tensor_dimensions": slwe_engine.dimension if slwe_engine else 0
+    })
+
 @app.route('/instruction', methods=['POST'])
 def route_instruction():
     global slwe_engine
@@ -144,6 +155,7 @@ def route_instruction():
 
 @app.route('/evolve', methods=['POST', 'GET'])
 def route_evolve():
+    """ 🌟 [SYNCHRONIZED EVOLVE CORE - SLWE] Directly driven by master controller parameters """
     global slwe_engine
     if not slwe_engine: return jsonify({"status": "error", "msg": "Core not initialized"}), 500
     
@@ -152,49 +164,32 @@ def route_evolve():
         noise = float(data.get('noise', 0.0))
         seed_val = data.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
+        
+        # ✅ FIXED: Explicitly accept master-driven time 't' if present to avoid core dephasing
+        t_input = data.get('t')
             
         slwe_engine.current_step += 1
-        t = slwe_engine.current_step * 0.1
+        t = float(t_input) if t_input is not None else slwe_engine.current_step * 0.1
     else:
         data = request.args
         noise = float(data.get('noise', 0.0))
-        t = float(data.get('t', 1.0))
         seed_val = data.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
+        t_input = data.get('t')
         
-    if noise > 0: 
-        slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
+        slwe_engine.current_step += 1
+        t = float(t_input) if t_input is not None else slwe_engine.current_step * 0.1
+        
+    # ✅ FIXED: Executed UNCONDITIONALLY. Wipes k_delta clean if noise level is zero.
+    slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
         
     prob_dist = slwe_engine.get_document_probability_density(t=t)
-    return jsonify({"probability_density": prob_dist, "gauge_metric_integrity": float(np.abs(slwe_engine.signal_vector[0]) ** 2)})
-
-@app.route('/ping', methods=['GET'])
-def route_ping():
-    global slwe_engine
     return jsonify({
-        "status": "ready",
-        "mode": "Classical Signal Emulation (SLWE)",
-        "configured_qubits": slwe_engine.num_qubits if slwe_engine else 0,
-        "tensor_dimensions": slwe_engine.dimension if slwe_engine else 0
+        "probability_density": prob_dist, 
+        "gauge_metric_integrity": float(np.abs(slwe_engine.signal_vector[0]) ** 2)
     })
 
 if __name__ == "__main__":
-    print("====================================================")
-    print("===    La Cour & Spreeuw Reference Framework: SLWE ===")
-    print("====================================================")
-    
-    try:
-        user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
-        user_qubits = int(user_input)
-    except (ValueError, KeyboardInterrupt, EOFError):
-        try:
-            user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
-        except ValueError:
-            user_qubits = 1
-        print(f"\n -> Input bypassed. Falling back to configuration scale: N={user_qubits}")
-        
-    print(f"\n[Hardware Matrix Allocated] Successfully deployed {user_qubits} classical channels ({2**user_qubits} dimensions).")
-    slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
-
-    print("=== [Daemon Activated] SLWE microservice standalone node is now live ===")
+    # Standard standalone initialization scale
+    slwe_engine = DocumentBasedSLWEEngine(num_qubits=1)
     app.run(host='127.0.0.1', port=6000, debug=False, threaded=True)
