@@ -57,22 +57,21 @@ class LiveTargetWalker:
         print(f" -> [LINK CRASHED] {self.name} failed handshake response on Port: {self.port:<4}")
         return False
 
-    def force_hardware_reset(self, num_qubits=1):
+    def force_hardware_reset(self):
         """ Forcibly flushes and re-allocates the remote complex-field register spaces """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         try:
-            requests.post(f"{self.url}/reset", json={"num_qubits": int(num_qubits)}, headers=custom_headers, timeout=1.0)
-        except:
-            pass
+            res = requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=1.0)
+            if res.status_code != 200:
+                print(f" -> [RESET WARNING] Node {self.name} replied with status {res.status_code}")
+        except Exception as e:
+            print(f" -> [RESET EXCEPTION] {self.name} offline during flush: {e}")
         time.sleep(0.02)
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta, num_qubits=1):
-        """
-        Dynamically tracks timeline matrix blocks with zero hardcoding leaks.
-        Perfectly maps noise, seeds, and execution time intervals down to CUDA arrays.
-        """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
-        self.force_hardware_reset(num_qubits=num_qubits)
+        
+        self.force_hardware_reset()
 
         # STAGE A: GATE INITIALIZATION 
         try:
@@ -98,10 +97,13 @@ class LiveTargetWalker:
                 res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
                 if res.status_code == 200:
                     final_density = np.array(res.json().get('probability_density'))
+                else:
+                    print(f"⚠️ [API ERROR] Port {self.port} returned {res.status_code}: {res.text}")
             except:
                 pass
 
-        self.force_hardware_reset(num_qubits=num_qubits)
+        self.force_hardware_reset()
+        
         if final_density is not None and final_density.sum() > 0:
             return final_density / final_density.sum() 
         return np.zeros(500)
@@ -170,45 +172,50 @@ def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
     if not os.path.exists(saved_file_name): return
     loaded_data = np.load(saved_file_name, allow_pickle=True).item()
     
-    q_universal_reference = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
+    q_ref_no_phase = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
+    q_ref_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
     
-    calc_fidelity = lambda records: np.array([(np.sum(np.sqrt((np.array(p)/np.array(p).sum())*q_universal_reference)))**2 for p in records if np.array(p).sum()>0])
-    f_data = { "A": calc_fidelity(loaded_data.get("A", [])), "B": calc_fidelity(loaded_data.get("B", [])),
-               "C": calc_fidelity(loaded_data.get("C", [])), "D": calc_fidelity(loaded_data.get("D", [])) }
+    f_data = {
+        "A": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_no_phase)))**2 for p in loaded_data["A"] if p.sum()>0]),
+        "B": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_with_phase)))**2 for p in loaded_data["B"] if p.sum()>0]),
+        "C": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_no_phase)))**2 for p in loaded_data["C"] if p.sum()>0]),
+        "D": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_with_phase)))**2 for p in loaded_data["D"] if p.sum()>0])
+    }
 
     table_cell_data = []
     validated_profiles = {}
+    
     configs_meta = [
-        ("A", "Config A: Classical SLWE (P-Gate Abolished)"),
-        ("B", "Config B: Classical SLWE (P-Gate Enforced)"),
-        ("C", "Config C: HSQ Parametric Core I (P-Gate Abolished)"),
-        ("D", "Config D: HSQ Parametric Core II (P-Gate Enforced)")
+        ("A", "Config A: Classical SLWE (P-Gate Abolished)", q_ref_no_phase),
+        ("B", "Config B: Classical SLWE (P-Gate Enforced)", q_ref_with_phase),
+        ("C", "Config C: HSQ Parametric Core I (P-Gate Abolished)", q_ref_no_phase),
+        ("D", "Config D: HSQ Parametric Core II (P-Gate Enforced)", q_ref_with_phase)
     ]
 
     print("\n======================================================================")
     print("📊 [HSQ ARCHITECTURAL ABLATION & QUANTUM METRIC CRITIQUE (BASELINE = Q)]")
     print("======================================================================")
 
-    for cid, name in configs_meta:
+    for cid, name, q_current_reference in configs_meta:
         matrix = np.array(loaded_data[cid])
         valid_rows = [row for row in matrix if np.sum(row) > 0]
         if len(valid_rows) == 0:
             validated_profiles[cid] = np.zeros(500)
         else:
-            residuals = np.array([np.sqrt(np.sum((r - q_universal_reference)**2)) for r in valid_rows])
+            residuals = np.array([np.sqrt(np.sum((r - q_current_reference)**2)) for r in valid_rows])
             median_res = np.median(residuals)
             std_res = np.std(residuals) + 1e-9
             valid_indices = np.where(abs(residuals - median_res) <= 1.5 * std_res)[0]
             if len(valid_indices) == 0: valid_indices = np.arange(len(valid_rows))
             validated_profiles[cid] = np.mean(np.array(valid_rows)[valid_indices], axis=0)
 
-        raw_stats = [quantify_metrics(row, q_universal_reference) for row in matrix]
+        raw_stats = [quantify_metrics(row, q_current_reference) for row in matrix]
         arr = np.array(raw_stats)
         means = np.mean(arr, axis=0)
         stds = np.std(arr, axis=0)
 
         mean_delta, ci_bounds, p_val = compute_95_confidence_interval(f_data[cid])
-        print(f" -> Manifold [{cid}] vs Analytical Baseline Q: Mean Δ={mean_delta:+.4e} | 95% CI=[{ci_bounds[0]:.4f}, {ci_bounds[1]:.4f}] | p={p_val:.4f}")
+        print(f" -> Manifold [{cid}] vs Correct Baseline Q: Mean Δ={mean_delta:+.4e} | 95% CI=[{ci_bounds[0]:.4f}, {ci_bounds[1]:.4f}] | p={p_val:.4f}")
 
         table_cell_data.append([
             name, 
@@ -242,7 +249,7 @@ def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
 
     # --- PLOT GENERATION: FIG 2 ---
     fig_qrw, ax_qrw = plt.subplots(figsize=(9, 4.5))
-    ax_qrw.plot(x_mesh, q_universal_reference, 'k:', label='IBM Qiskit Ground Truth (Symmetric Reference Q)', linewidth=1.8, alpha=0.7)
+    ax_qrw.plot(x_mesh, q_ref_no_phase, 'k:', label='IBM Qiskit Ground Truth (Symmetric Reference Q)', linewidth=1.8, alpha=0.7)
     ax_qrw.plot(x_mesh, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
     ax_qrw.plot(x_mesh, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
     ax_qrw.plot(x_mesh, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
@@ -250,14 +257,13 @@ def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
     ax_qrw.set_xlabel('Spatial Grid Position Coordinate (x)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_ylabel('Cross-Validated Ensemble Probability Density P(x)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_xlim(-20, 20)
-    ax_qrw.set_ylim(0, max(q_universal_reference) * 1.35)
+    ax_qrw.set_ylim(0, max(q_ref_no_phase) * 1.35)
     ax_qrw.grid(True, linestyle=':', alpha=0.5)
     for label in (ax_qrw.get_xticklabels() + ax_qrw.get_yticklabels()): label.set_fontname('Times New Roman')
     ax_qrw.legend(loc='upper right', frameon=True, facecolor='#FFFFFF', edgecolor='#DDDDDD', fontsize=9.5)
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight')
     plt.close()
     print("🏆 [SUCCESS] Pure real-physics plotting loops and table assemblies are fully closed.")
-
 if __name__ == "__main__":
     NUM_SEEDS = 20
     EVOLVE_STEPS = 10  
@@ -306,10 +312,10 @@ if __name__ == "__main__":
         dist_C = hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "C", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
         dist_D = hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "D", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
 
-        matrix_store["A"].append(dist_A)
-        matrix_store["B"].append(dist_B)
-        matrix_store["C"].append(dist_C)
-        matrix_store["D"].append(dist_D)
+        matrix_store["A"].append(np.array(dist_A, copy=True))
+        matrix_store["B"].append(np.array(dist_B, copy=True))
+        matrix_store["C"].append(np.array(dist_C, copy=True))
+        matrix_store["D"].append(np.array(dist_D, copy=True))
 
     np.save(file_name, matrix_store, allow_pickle=True)
     print(f" 🏆 [Asset Locked] Angie's independent seed block asset locked to disk: {file_name}")
