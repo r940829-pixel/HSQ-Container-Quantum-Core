@@ -51,7 +51,7 @@ WORKDIR /app
 # SOURCE CODE TRANSLATION & DECOUPLING
 # Inject the classical signal benchmark solver backend into the container topology.
 # ==============================================================================
-COPY slwe_node.py /app/
+COPY slwe_local.py /app/
 
 # ==============================================================================
 # NETWORKING BOUNDARY INTERFACE
@@ -65,4 +65,4 @@ EXPOSE ${APP_PORT}
 # Threads and tasks are dynamically dispatched into safe execution layers,
 # mitigating CPU context switching overheads without fracturing CUDA Contexts.
 # ==============================================================================
-CMD ["uvicorn", "slwe_node:app", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["uvicorn", "slwe_local:app", "--host", "0.0.0.0", "--port", "3000"]
