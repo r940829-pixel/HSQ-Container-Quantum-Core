@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
     numpy \
     scipy \
-    cupy-wheel \
+    cupy-cuda11x \
     redis \
     fastapi \
     pydantic \
