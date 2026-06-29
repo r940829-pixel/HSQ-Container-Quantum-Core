@@ -1,23 +1,54 @@
 # ==============================================================================
 # CLASSICAL SIGNAL-BASED LINEAR WAVE EQUATION (SLWE) BENCHMARK NODE
-# [MAXIMUM PERFORMANCE COMPLIANCE - RIGOROUS LA COUR INTERFEROMETRY RENDER]
-# Implements the multi-qubit classical amplitude modulation framework aligned 
-# with Spreeuw 2001 & La Cour 2015/2016. Completely bug-fixed for zero-noise flushing.
+# [MAXIMUM PERFORMANCE COMPLIANCE - GPU ACCELERATED VIA NVIDIA CUDA CORES]
+# Fully aligned with formulations of Spreeuw 2001 & La Cour 2015/2016.
+# Mirrors the Flask API schema and response topology of the HSQ container 100%.
 # ==============================================================================
 
+import os
+import redis
 import numpy as np
 from flask import Flask, request, jsonify
-import os
+
+# ==============================================================================
+# HARDWARE ACCELERATION CORES BINDING LAYER (SLWE GPU WELDING)
+# ==============================================================================
+try:
+    import cupy as cp
+    xp = cp
+    HAS_GPU = True
+except ImportError:
+    xp = np
+    HAS_GPU = False
 
 app = Flask(__name__)
 
-class DocumentBasedSLWEEngine:
+# ==============================================================================
+# INTER-PROCESS COMMUNICATION CHANNEL (DISTRIBUTED TENSOR BUS alignment)
+# ==============================================================================
+TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
+try:
+    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=2057, db=0, decode_responses=True)
+    tensor_bus.ping()
+    BUS_CONNECTED = True
+    print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:2057")
+except redis.ConnectionError:
+    tensor_bus = None
+    BUS_CONNECTED = False
+    print("⚠️ [Tensor Bus] Virtual Switch not detected. Operating in strictly isolated mode.")
+
+# ==============================================================================
+# GPU ACCELERATED SLWE NUMERICAL COMPUTATIONAL CORE
+# ==============================================================================
+class HilbertSpaceClassicalSignalSLWEEngine:
     def __init__(self, num_qubits=1):
-        """ Initialize classical continuous-wave register spaces. """
         self.num_qubits = num_qubits
         self.dimension = 2 ** num_qubits  
-        self.signal_vector = np.zeros(self.dimension, dtype=complex)
+        
+        # ⚡ CUDA Accelerated Register Initialization
+        self.signal_vector = xp.zeros(self.dimension, dtype=complex)
         self.signal_vector[0] = 1.0 + 0j
+        
         self.current_step = 0
         self.phi = 0.0      # Rigid tracking for relative gate phase
         self.k_delta = 0.0  # Cumulative dephasing noise constant
@@ -31,105 +62,105 @@ class DocumentBasedSLWEEngine:
         self.vg = 0.8       # Velocity parameter (v_g)
         self.alpha = 0.1    # Spatiotemporal diffusion mapping index
 
-    def apply_hadamard_to_all(self):
-        """ Execute linear global mixer transformations via Kronecker expansions. """
-        H_single = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
+    def enforce_gauge_protection(self):
+        """ Normalization safeguard tightly bound within 1e-15 margin via GPU """
+        total_power = float(xp.sum(xp.abs(self.signal_vector) ** 2))
+        if total_power > 1e-15:
+            self.signal_vector = self.signal_vector / xp.sqrt(total_power)
+
+    def apply_hadamard_gate(self):
+        """ ⚡ GPU-Accelerated Global Mixer Transformation """
+        H_single = xp.array([[1.0, 1.0], [1.0, -1.0]], dtype=complex) / xp.sqrt(2)
         H_total = H_single
         for _ in range(self.num_qubits - 1):
-            H_total = np.kron(H_total, H_single)
-        self.signal_vector = np.dot(H_total, self.signal_vector)
-        self.phi = 0.0  # Reset embedded phase on mixer crossover
-        self._enforce_normalization_safeguard()
+            H_total = xp.kron(H_total, H_single)
+        self.signal_vector = xp.dot(H_total, self.signal_vector)
+        self.phi = 0.0  
+        self.enforce_gauge_protection()
 
-    def apply_phase_rotation_to_all(self, delta_phi):
-        """ Applies a deterministic discrete phase change across the 1-state subcomponents. """
+    def apply_pauli_x_gate(self):
+        """ ⚡ GPU Bit-flip substitution """
+        if HAS_GPU:
+            self.signal_vector = self.signal_vector[::-1]
+        else:
+            self.signal_vector = np.flip(self.signal_vector)
+        self.enforce_gauge_protection()
+
+    def apply_phase_rotation_gate(self, delta_phi):
+        """ ⚡ GPU-Accelerated compliant Phase Gate Rotation """
         self.phi = delta_phi
         for i in range(1, self.dimension):
-            self.signal_vector[i] = self.signal_vector[i] * np.exp(1j * delta_phi)
-        self._enforce_normalization_safeguard()
+            self.signal_vector[i] *= xp.exp(1j * delta_phi)
+        self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        """ 
-        🌟 [FIXED NOISE SANITIZATION CORE - SLWE EDITION]
-        If noise_level is exactly 0, forces k_delta to instantly vanish.
-        Otherwise, samples from the exact seed timeline to match the HSQ manifestation.
-        """
+        """ 🌟 [FIXED NOISE SANITIZATION CORE - SLWE EDITION] """
         if noise_level <= 0.0:
-            self.k_delta = 0.0  # ✅ FORCE PURGE: Wipes out residual noise leakage
+            self.k_delta = 0.0  # FORCE PURGE
             return
             
         if seed_val is not None:
             try:
                 np.random.seed(int(seed_val) + int(self.current_step))
-            except (ValueError, TypeError):
+            except:
                 pass
                     
         noise = np.random.normal(0, noise_level)
         self.k_delta += noise
         for i in range(1, self.dimension):
-            self.signal_vector[i] *= np.exp(1j * noise)
-        self._enforce_normalization_safeguard()
+            self.signal_vector[i] *= xp.exp(1j * noise)
+        self.enforce_gauge_protection()
 
-    def _enforce_normalization_safeguard(self):
-        """ Guard rail ensuring numerical stability tightly bound within 1e-15 margin """
-        total_power = np.sum(np.abs(self.signal_vector) ** 2)
-        if total_power > 1e-15:
-            self.signal_vector = self.signal_vector / np.sqrt(total_power)
-
-    def get_document_probability_density(self, t=1.0):
-        """ Physics Perfect Closure: Genuine La Cour Interferometry """
-        x_grid = np.linspace(-20, 20, 500)
-        current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
+    def compute_current_xi(self, t=1.0):
+        """ ⚡ 500-point Localized Grid Solver completely offloaded to CUDA GPU """
+        x_grid = xp.linspace(-20, 20, 500)
+        current_sigma = xp.sqrt(self.sigma**2 + self.alpha * t)
         
-        # Extract active field state complex weights from registers
+        # 🌟 Pull complex weights from device memory arrays safely
         a_complex = self.signal_vector[0]
         b_complex = self.signal_vector[1] if self.dimension > 1 else 0j
         
-        # Reconstruct separate spatial envelopes matching physical velocity profiles
-        envelope_a = np.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
-        envelope_b = np.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
+        envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
+        envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
         
         phase_L = self.k_L * x_grid + self.omega_L * t
         phase_R = (self.k_R - self.k_delta) * x_grid + self.omega_R * t + self.phi
         
-        xi_classical = a_complex * envelope_a * np.exp(1j * phase_L) + \
-                       b_complex * envelope_b * np.exp(1j * phase_R)
+        xi_classical = a_complex * envelope_a * xp.exp(1j * phase_L) + \
+                       b_complex * envelope_b * xp.exp(1j * phase_R)
         
-        prob_dist = np.abs(xi_classical)**2
-        total_sum = np.sum(prob_dist)
+        prob = xp.abs(xi_classical)**2
+        total_sum = float(xp.sum(prob))
         if total_sum > 0:
-            prob_dist /= total_sum
+            prob = prob / total_sum
             
-        return [float(v) for v in prob_dist]
+        if HAS_GPU:
+            return [float(v) for v in cp.asnumpy(prob).flatten()]
+        return [float(v) for v in prob.flatten()]
 
-slwe_engine = None
+
+slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=1)
+
+# ==============================================================================
+# 🤝 100% MIRRORED RESTFUL API DAEMON ROUTING GATEWAYS
+# ==============================================================================
 
 @app.route('/reset', methods=['POST'])
 def route_reset():
     global slwe_engine
     data = request.get_json(silent=True) or {}
+    requested_qubits = data.get("num_qubits", 1)
     
-    requested_qubits = data.get("num_qubits")
-    if requested_qubits is not None:
-        user_qubits = int(requested_qubits)
-    else:
-        user_qubits = slwe_engine.num_qubits if slwe_engine else 1
-        
-    slwe_engine = DocumentBasedSLWEEngine(num_qubits=user_qubits)
-    return jsonify({
-        "status": "success", 
-        "msg": f"SLWE engine matrix reset and reallocated successfully for N={user_qubits}"
-    })
+    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=int(requested_qubits))
+    return jsonify({"status": "success", "msg": "SLWE qubit register reset successfully"})
 
 @app.route('/ping', methods=['GET'])
 def route_ping():
-    global slwe_engine
     return jsonify({
         "status": "ready",
-        "device": "CPU Simulation Mode" if slwe_engine else "Unknown Core",
-        "mode": "Classical Signal Emulation (SLWE)",
-        "configured_qubits": slwe_engine.num_qubits if slwe_engine else 0,
-        "tensor_dimensions": slwe_engine.dimension if slwe_engine else 0
+        "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
+        "cuda_accelerated": HAS_GPU,
+        "tensor_bus_active": BUS_CONNECTED
     })
 
 @app.route('/instruction', methods=['POST'])
@@ -139,57 +170,54 @@ def route_instruction():
     gate_name = data.get("gate", "").lower()
     
     if gate_name in ["h", "hadamard"]:
-        if slwe_engine: slwe_engine.apply_hadamard_to_all()
-        return jsonify({"status": "success", "msg": "Global SLWE Hadamard completed"})
-        
+        slwe_engine.apply_hadamard_gate()
+        return jsonify({
+            "status": "success", "gate": "Hadamard",
+            "a_magnitude": float(np.abs(cp.asnumpy(slwe_engine.signal_vector[0]))) if HAS_GPU else float(np.abs(slwe_engine.signal_vector[0]))
+        })
+    elif gate_name in ["x", "not"]:
+        slwe_engine.apply_pauli_x_gate()
+        return jsonify({"status": "success", "gate": "Pauli-X"})
     elif gate_name in ["phase", "p"]:
         delta_phi = float(data.get("delta_phi", 0.0))
-        if slwe_engine: slwe_engine.apply_phase_rotation_to_all(delta_phi)
-        return jsonify({"status": "success", "msg": "Global SLWE Phase rotation completed"})
-        
-    elif gate_name in ["x", "not"]:
-        if slwe_engine: slwe_engine.signal_vector = np.flip(slwe_engine.signal_vector)
-        return jsonify({"status": "success", "msg": "Global SLWE Bit-flip executed"})
-        
-    return jsonify({"status": "error", "msg": f"Gate operation '{gate_name}' not supported by SLWE platform"}), 400
+        slwe_engine.apply_phase_rotation_gate(delta_phi)
+        return jsonify({"status": "success", "gate": "Phase Rotation", "phi": float(slwe_engine.phi)})
+    return jsonify({"status": "error", "msg": f"Gate instruction '{gate_name}' not supported"}), 400
 
 @app.route('/evolve', methods=['POST', 'GET'])
 def route_evolve():
-    """ 🌟 [SYNCHRONIZED EVOLVE CORE - SLWE] Directly driven by master controller parameters """
     global slwe_engine
-    if not slwe_engine: return jsonify({"status": "error", "msg": "Core not initialized"}), 500
-    
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
-        noise = float(data.get('noise', 0.0))
+        noise_level = float(data.get('noise', 0.0))
         seed_val = data.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
-        
-        # ✅ FIXED: Explicitly accept master-driven time 't' if present to avoid core dephasing
         t_input = data.get('t')
-            
+        
         slwe_engine.current_step += 1
         t = float(t_input) if t_input is not None else slwe_engine.current_step * 0.1
     else:
-        data = request.args
-        noise = float(data.get('noise', 0.0))
-        seed_val = data.get('seed')
+        t_input = request.args.get('t')
+        noise_level = float(request.args.get('noise', 0.0))
+        seed_val = request.args.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
-        t_input = data.get('t')
         
         slwe_engine.current_step += 1
         t = float(t_input) if t_input is not None else slwe_engine.current_step * 0.1
         
-    # ✅ FIXED: Executed UNCONDITIONALLY. Wipes k_delta clean if noise level is zero.
-    slwe_engine.inject_phase_damping(noise, seed_val=seed_val)
-        
-    prob_dist = slwe_engine.get_document_probability_density(t=t)
+    slwe_engine.inject_phase_damping(noise_level, seed_val=seed_val)
+    prob_dist = slwe_engine.compute_current_xi(t=t)
+    
+    # Extract gauge mapping via devices
+    v_0 = slwe_engine.signal_vector[0]
+    gauge_val = float(np.abs(cp.asnumpy(v_0))**2) if HAS_GPU else float(np.abs(v_0)**2)
+    
     return jsonify({
-        "probability_density": prob_dist, 
-        "gauge_metric_integrity": float(np.abs(slwe_engine.signal_vector[0]) ** 2)
+        "status": "evolved",
+        "t_final": t,
+        "gauge_metric_integrity": gauge_val,
+        "probability_density": prob_dist
     })
 
 if __name__ == "__main__":
-    # Standard standalone initialization scale
-    slwe_engine = DocumentBasedSLWEEngine(num_qubits=1)
-    app.run(host='127.0.0.1', port=6000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=6000)
