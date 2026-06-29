@@ -35,7 +35,7 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
     pip3 install --no-cache-dir \
     numpy \
     scipy \
-    cupy-cuda11x \
+    cupy-wheel \
     redis \
     fastapi \
     pydantic \
@@ -57,7 +57,7 @@ COPY slwe_local.py /app/
 # NETWORKING BOUNDARY INTERFACE
 # Broadcast and expose the localized runtime daemon communication port.
 # ==============================================================================
-EXPOSE ${APP_PORT}
+EXPOSE 3000
 
 # ==============================================================================
 # HIGH-CONCURRENCY LIFECYCLE CONTROLLER (THE ASGI BREAKTHROUGH)
