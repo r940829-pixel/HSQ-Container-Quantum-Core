@@ -17,7 +17,7 @@ print("======================================================================")
 print("=== WP4: Angie's 2D Relativistic Quantum Cloud Decoherence Movie   ===")
 print("======================================================================")
 
-# Rigorous mapping to the active single-node physical target ports
+# 🌟 RIGOROUS PORT ALIGNMENT: Matching the exact async docker container clusters
 hsq_url = "http://127.0.0.1:5011/evolve"
 slwe_url = "http://127.0.0.1:6000/evolve"
 
@@ -25,6 +25,7 @@ slwe_url = "http://127.0.0.1:6000/evolve"
 test_noise = 1.00  
 total_frames = 25  
 time_steps = np.linspace(0.1, 10.0, total_frames)
+movie_seed = 42    # Rigid temporal anchor point to stabilize interference ripples
 
 # Initialize deep-black, high-contrast publication canvas
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 6), facecolor='black')
@@ -91,8 +92,9 @@ def update(frame):
     hsq_connected = False
     hsq_p = None
     try:
-        # Aligned with hsq_qubit.py parameters: Fetch via GET query to map continuous time t
-        res = requests.get(f"{hsq_url}?t={t}&noise={test_noise}", headers=custom_headers, timeout=0.8)
+        # ✅ FIXED: Query parameters aligned 100% with hsq_qubit.py REST GET gateway requirements
+        query_url = f"{hsq_url}?t={t}&noise={test_noise}&seed={movie_seed}"
+        res = requests.get(query_url, headers=custom_headers, timeout=1.2)
         if res.status_code == 200:
             raw_p = res.json().get('probability_density')
             if raw_p is not None:
@@ -120,8 +122,9 @@ def update(frame):
     slwe_connected = False
     slwe_p = None
     try:
-        # Aligned with slwe endpoint tracking
-        res = requests.get(f"{slwe_url}?t={t}&noise={test_noise}", headers=custom_headers, timeout=0.8)
+        # ✅ FIXED: Query parameters aligned 100% with the new containerized slwe_local.py GET interface
+        query_url = f"{slwe_url}?t={t}&noise={test_noise}&seed={movie_seed}"
+        res = requests.get(query_url, headers=custom_headers, timeout=1.2)
         if res.status_code == 200:
             raw_slwe = res.json().get('probability_density')
             if raw_slwe is not None:
