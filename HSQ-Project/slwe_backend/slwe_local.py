@@ -11,12 +11,6 @@ import redis
 import numpy as np
 from flask import Flask, request, jsonify
 
-if sys.platform == 'win32':
-    cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2\bin"
-    if os.path.exists(cuda_path):
-        os.add_dll_directory(cuda_path)
-    os.environ["PATH"] = cuda_path + os.path.pathsep + os.environ["PATH"]
-
 # ==============================================================================
 # HARDWARE ACCELERATION CORES BINDING LAYER (SLWE GPU WELDING)
 # ==============================================================================
@@ -31,11 +25,11 @@ except ImportError:
 app = Flask(__name__)
 
 # ==============================================================================
-# INTER-PROCESS COMMUNICATION CHANNEL (DISTRIBUTED TENSOR BUS alignment)
+# INTER-PROCESS COMMUNICATION CHANNEL (DISTRIBUTED TENSOR BUS ALIGNMENT)
 # ==============================================================================
 TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
 try:
-    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=2057, db=0, decode_responses=True)
+    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=1000, db=0, decode_responses=True)
     tensor_bus.ping()
     BUS_CONNECTED = True
     print(f"🔗 [Tensor Bus] Bound to Virtual Switch at {TENSOR_BUS_HOST}:2057")
@@ -229,25 +223,28 @@ def route_evolve():
     })
 
 # ==============================================================================
+# ENTRY POINT & RUNTIME BOOTSTRAPPER
 # ==============================================================================
 if __name__ == "__main__":
     print("======================================================================")
-    print("===       La Cour & Spreeuw Reference Framework: SLWE Node         ===")
+    print("===        La Cour & Spreeuw Reference Framework: SLWE Node         ===")
     print("======================================================================")
     
+    # Check for automated Docker/System environment scale prior to interactive shell fallback
     try:
-        user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
-        user_qubits = int(user_input)
+        env_scale = os.environ.get("SLWE_QUBITS_SCALE")
+        if env_scale is not None:
+            user_qubits = int(env_scale)
+            print(f" -> Automated boot detected. Scaling registers to N={user_qubits} via environment variable.")
+        else:
+            user_input = input("Designate virtual qubit scale for SLWE emulation (N): ")
+            user_qubits = int(user_input)
     except (ValueError, KeyboardInterrupt, EOFError):
-        try:
-            user_qubits = int(os.environ.get("SLWE_QUBITS_SCALE", "1"))
-        except ValueError:
-            user_qubits = 1
-        print(f"\n -> Input bypassed. Falling back to configuration scale: N={user_qubits}")
+        user_qubits = 1
+        print(f"\n -> Input bypassed or invalid. Falling back to default scale: N={user_qubits}")
         
     print(f"\n[Hardware Matrix Allocated] Deploying {user_qubits} classical channels ({2**user_qubits} dimensions).")
-    
     slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
     
-    print(f"=== [Daemon Activated] SLWE microservice standalone node live on Port 6000 ===")
-    app.run(host='0.0.0.0', port=6000, debug=False, threaded=True)
+    print(f"=== [Daemon Activated] SLWE microservice standalone node live on Port 3000 ===")
+    app.run(host='0.0.0.0', port=3000, debug=False, threaded=True)
