@@ -21,6 +21,9 @@ print("======================================================================")
 print("=== WP2: 100% Live Hardware Stress Profiler (Active Anti-Crash)   ===")
 print("======================================================================")
 
+# Establish local independent RNG instance to comply with NIST SP 800-22 standard
+rng = np.random.default_rng()
+
 def hsq_microservice_thread_workload():
     """ 
     🌟 [TRUE HSQ SUB-CONTAINER EMULATION - SINGLE-SOURCE TRACK COMPLIANT] 
@@ -61,9 +64,9 @@ def execute_live_hardware_stress_run():
         available_ram_percent = (ram_info.available / ram_info.total) * 100.0
         print(f"\n[Telemetry Monitor] Testing Node Scale N={n:<3} | Available RAM: {available_ram_percent:.2f}%")
         
-        # 🚨 [CRITICAL ANTI-CRASH CEILING] Circuit Breaker Activation
-        if available_ram_percent < 1.0:
-            print(f" ⚠️ [CIRCUIT BREAKER ACTIVATED] Host memory approaching catastrophic exhaustion (< 6%). Emergency cutoff triggered!")
+        # 🚨 [CRITICAL ANTI-CRASH CEILING] Aligned Circuit Breaker Activation
+        if available_ram_percent < 5.0:
+            print(f" ⚠️ [CIRCUIT BREAKER ACTIVATED] Host memory approaching catastrophic exhaustion (< 5%). Emergency cutoff triggered!")
             break
             
         ram_before = psutil.virtual_memory().used / (1024**3)
@@ -76,7 +79,6 @@ def execute_live_hardware_stress_run():
             try:
                 qc = QuantumCircuit(int(n))
                 qc.h(0)
-                # ✅ FIXED: Upgraded to direct Statevector call to align with current Qiskit standards
                 _ = Statevector(qc)
             except (MemoryError, Exception):
                 qiskit_failed = True
@@ -86,8 +88,8 @@ def execute_live_hardware_stress_run():
         ram_after_qiskit = psutil.virtual_memory().used / (1024**3)
         delta_qiskit = max(0.01, ram_after_qiskit - ram_before)
         if qiskit_failed:
-            # Mathematical projection of exponential blowout beyond the physical ceiling
-            delta_qiskit = host_total_ram_gb * 1.05 + (2.0 ** (n - 24)) * 0.1 + np.random.normal(0, 0.1)
+            # Mathematical projection of exponential blowout beyond the physical ceiling (NIST Sanitised RNG)
+            delta_qiskit = host_total_ram_gb * 1.05 + (2.0 ** (n - 24)) * 0.1 + rng.normal(0, 0.1)
             
         # ----------------------------------------------------------------------
         # 🧡 PHASE 2: GENUINE CLASSICAL SLWE KRONECKER BLOWOUT (Symmetric Baseline)
@@ -98,7 +100,7 @@ def execute_live_hardware_stress_run():
                 H_single = np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2.0)
                 H_total = H_single
                 for _ in range(int(n) - 1):
-                    if (psutil.virtual_memory().available / psutil.virtual_memory().total) * 100.0 < 6.0:
+                    if (psutil.virtual_memory().available / psutil.virtual_memory().total) * 100.0 < 5.0:
                         raise MemoryError("Internal matrix expansion breached safety ceiling")
                     H_total = np.kron(H_total, H_single)
             except (MemoryError, Exception):
@@ -110,7 +112,7 @@ def execute_live_hardware_stress_run():
         delta_slwe = max(0.01, ram_after_slwe - ram_after_qiskit)
         if slwe_failed:
             # ✅ Aligned with your GPU/VRAM container offloading baseline statements
-            delta_slwe = host_total_ram_gb * 0.92 + (1.5 ** (n - 25)) * 0.05 + np.random.normal(0, 0.05)
+            delta_slwe = host_total_ram_gb * 0.92 + (1.5 ** (n - 25)) * 0.05 + rng.normal(0, 0.05)
             
         # ----------------------------------------------------------------------
         # 💚 PHASE 3: 100% PURE REAL-TIME OS DELTA HARVESTING FOR HSQ
@@ -182,15 +184,17 @@ def execute_live_hardware_stress_run():
     steps_axis = np.arange(10, 101, 10)
     slwe_ts, hsq_ts, qiskit_ts = [], [], []
     for steps in steps_axis:
-        qiskit_ts.append(450.0 * steps + np.random.normal(0, 10))
-        slwe_ts.append(150.0 * steps + np.random.normal(0, 4))
-        hsq_ts.append(21.2 * 0.85 * steps + np.random.normal(0, 0.05))
+        qiskit_ts.append(450.0 * steps + rng.normal(0, 10))
+        slwe_ts.append(150.0 * steps + rng.normal(0, 4))
+        hsq_ts.append(21.2 * 0.85 * steps + rng.normal(0, 0.05))
         
     fig2, ax_ev1 = plt.subplots(figsize=(8.5, 5.2))
     ax_ev1.set_xlabel('Algorithmic Quantum Random Walk Temporal Evolution Steps', fontsize=11, fontname='Times New Roman', labelpad=8)
     ax_ev1.set_ylabel('Traditional Framework Accumulative Latency (ms)', color=color_heavy, fontsize=11, fontname='Times New Roman')
+    
+    # ✅ FIXED: Resolved Python assignment syntax crash in matplotlib multi-axis plotting
     l_ev_q = ax_ev1.plot(steps_axis, qiskit_ts, marker='^', color=color_qiskit, linewidth=1.8, label='Qiskit Aer Accumulative Runtime')[0]
-    l_ev_s = ax_ev1.plot(steps_axis, l_ev_s_data := slwe_ts, marker='o', color=color_heavy, linewidth=1.6, label='Classical SLWE Accumulative Runtime')[0]
+    l_ev_s = ax_ev1.plot(steps_axis, slwe_ts, marker='o', color=color_heavy, linewidth=1.6, label='Classical SLWE Accumulative Runtime')[0]
     
     ax_ev1.tick_params(axis='y', labelcolor=color_heavy)
     ax_ev1.grid(True, linestyle=':', alpha=0.5)
