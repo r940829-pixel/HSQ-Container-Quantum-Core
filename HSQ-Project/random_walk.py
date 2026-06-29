@@ -258,9 +258,9 @@ def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
     print("🏆 [SUCCESS] Pure real-physics plotting loops and table assemblies are fully closed.")
 
 if __name__ == "__main__":
-    NUM_SEEDS = 100
+    NUM_SEEDS = 20
     EVOLVE_STEPS = 10  
-    target_noise = 0.00        
+    target_noise = 0.10        
     global_phase_delta = 0.05  
     
     target_qubits = 1       
