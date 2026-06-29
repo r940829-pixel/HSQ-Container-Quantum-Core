@@ -108,10 +108,14 @@ sudo docker rm -f $(sudo docker ps -a -q)
 
 ---
 
-### Use slwe_local.py in terminal
+### Use slwe to computing
 To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
 ```bash
-python slwe_local.py
+docker build -t slwe-gunicorn-gpu .
+```
+And deploy N bits of SLWE 
+```bash
+docker run -d --name slwe_async_worker --gpus all -p 6000:3000 -e SLWE_QUBITS_SCALE=N slwe-gunicorn-gpu
 ```
 
 ---
