@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
     numpy \
     scipy \
-    cupy-cuda11x \
+    cupy-wheel \
     redis \
     fastapi \
     pydantic \
@@ -47,7 +47,7 @@ WORKDIR /app
 COPY hsq_qubit.py /app/
 
 # Expose the designated local runtime communication port
-EXPOSE ${APP_PORT}
+EXPOSE 5000
 
 # ==============================================================================
 # LIFECYCLE CONTROLLER (THE FASTAPI/UVICORN BREAKTHROUGH)
