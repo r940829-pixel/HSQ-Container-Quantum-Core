@@ -134,7 +134,9 @@ class HilbertSpaceSpinorQuasiparticleService:
         xi_a_evolved = xi_a - 1j * dt * H_xi_a
         xi_b_evolved = xi_b - 1j * dt * H_xi_b
         
-        prob = xp.abs(xi_a_evolved)**2 + xp.abs(xi_b_evolved)**2
+        xi_total = xi_a_evolved + xi_b_evolved
+        prob = xp.abs(xi_total)**2
+        
         total_sum = float(xp.sum(prob))
         if total_sum > 0:
             prob = prob / total_sum
@@ -221,7 +223,12 @@ def route_evolve(payload: EvolvePayload):
 
 @app.get("/ping")
 async def route_ping():
-    return {"status": "ready", "tensor_bus_active": BUS_CONNECTED, "cuda_accelerated": HAS_GPU}
+    return {
+        "status": "ready", 
+        "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
+        "tensor_bus_active": BUS_CONNECTED, 
+        "cuda_accelerated": HAS_GPU
+    }
 
 @app.post("/reset")
 async def route_reset():
