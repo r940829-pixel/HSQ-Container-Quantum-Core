@@ -113,9 +113,9 @@ To use slwe to computing, Please enter the following command and ensure slwe_loc
 ```bash
 sudo docker build -t slwe-gunicorn-gpu .
 ```
-And deploy N bits of SLWE 
+And deploy 1 bits of SLWE 
 ```bash
-sudo docker run -d --name slwe_async_worker --gpus all -p 6000:3000 -e SLWE_QUBITS_SCALE=N slwe-gunicorn-gpu
+sudo docker run -d --name slwe_async_worker --gpus all -p 3000:3000 -e SLWE_QUBITS_SCALE=1 slwe-gunicorn-gpu
 ```
 
 ---
