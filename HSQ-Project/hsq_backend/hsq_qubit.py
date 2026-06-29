@@ -1,6 +1,6 @@
 # ==============================================================================
 # HILBERT-SPACE SPINOR QUASIPARTICLE (HSQ) COMPUTATIONAL MICROSERVICE
-# [REFACTORED FOR RIGOROUS ACADEMIC STANDARDS AND SINGLE-SOURCE FREQUENCY WELDED]
+# [REFACTORED FOR RIGOROUS ACADEMIC STANDARDS AND NOISE-SANITISED TIMELINES]
 # Contains the numeric state register, GPU-accelerated spatial map solver, 
 # and localized gate orchestration APIs for a single logic qubit emulator node.
 # ==============================================================================
@@ -50,9 +50,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         Initialize the complex state registers and spatiotemporal tracking coefficients.
         """
         # --- 🌟 SINGLE-SOURCE FREQUENCY BINDING ---
-        # Rigorously welded into a single unified origin frequency baseline
         self.omega_0 = 2.0  
-        
         self.k_L = 1.2
         self.k_R = -1.2
         
@@ -93,9 +91,18 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        if seed_val_str := seed_val:
+        """
+        🌟 [FIXED NOISE SANITIZATION CORE]
+        If noise_level is exactly 0, forces k_delta to instantly vanish.
+        Otherwise, samples from the exact seed timeline to maintain variance boundaries.
+        """
+        if noise_level <= 0.0:
+            self.k_delta = 0.0  # ✅ FORCE PURGE: Eliminates leftover noise permanently
+            return
+            
+        if seed_val is not None:
             try:
-                np.random.seed(int(seed_val_str) + int(self.current_step))
+                np.random.seed(int(seed_val) + int(self.current_step))
             except (ValueError, TypeError):
                 pass
             
@@ -125,7 +132,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
         
         # 3. Formulate the simplified single-source time phase index
-        time_phase = self.omega_0  * t
+        time_phase = self.omega_0 * t
         
         phase_L = (self.k_L - self.k_delta) * x_grid + time_phase
         phase_R = (self.k_R - self.k_delta) * x_grid + time_phase + self.phi
@@ -240,22 +247,30 @@ def route_instruction():
 
 @app.route('/evolve', methods=['POST', 'GET'])
 def route_evolve():
+    """ 🌟 [SYNCHRONIZED EVOLVE CORE] Directly driven by master controller parameters """
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         noise_level = float(data.get('noise', 0.0))
         seed_val = data.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
-            
+        
+        # ✅ FIXED: Explicitly accept master-driven time 't' if present to avoid step dephasing
+        t_input = data.get('t')
+        
         hsq_qubit.current_step += 1
-        t = hsq_qubit.current_step * 0.1
+        t = float(t_input) if t_input is not None else hsq_qubit.current_step * 0.1
     else:
-        t = float(request.args.get('t', 1.0))
+        t_input = request.args.get('t')
         noise_level = float(request.args.get('noise', 0.0))
         seed_val = request.args.get('seed')
         if seed_val is not None: seed_val = int(seed_val)
         
-    if noise_level > 0:
-        hsq_qubit.inject_phase_damping(noise_level, seed_val=seed_val)
+        hsq_qubit.current_step += 1
+        t = float(t_input) if t_input is not None else hsq_qubit.current_step * 0.1
+        
+    # ✅ FIXED: Executed UNCONDITIONALLY. The boundary validation inside inject_phase_damping 
+    # handles noise_level==0 by dynamically wiping k_delta out of memory.
+    hsq_qubit.inject_phase_damping(noise_level, seed_val=seed_val)
         
     prob_dist = hsq_qubit.compute_current_xi(t=t)
     
