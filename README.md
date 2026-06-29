@@ -115,7 +115,7 @@ sudo docker build -t slwe-gunicorn-gpu .
 ```
 And deploy N bits of SLWE 
 ```bash
-docker run -d --name slwe_async_worker --gpus all -p 6000:3000 -e SLWE_QUBITS_SCALE=N slwe-gunicorn-gpu
+sudo docker run -d --name slwe_async_worker --gpus all -p 6000:3000 -e SLWE_QUBITS_SCALE=N slwe-gunicorn-gpu
 ```
 
 ---
