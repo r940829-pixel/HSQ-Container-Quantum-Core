@@ -34,10 +34,10 @@ print("===  WP1 & WP4: Angie's IBM Qiskit Aer Evolution Suite (Unified Q) ===")
 print("======================================================================")
 
 class LiveTargetWalker:
-    def __init__(self, port, name):
-        self.url = f"http://127.0.0.1:{port}"
+    def __init__(self, target_address, name):
+        self.url = f"http://{target_address}"
         self.name = name
-        self.port = port
+        self.target_address = target_address
         self.cuda_active = False
 
     def check_live_handshake(self):
@@ -50,11 +50,11 @@ class LiveTargetWalker:
                 self.cuda_active = res.json().get("cuda_accelerated", False)
                 
                 status_icon = "⚡ CUDA ACTIVE" if self.cuda_active else "💻 CPU MODE"
-                print(f" -> [LINK SUCCESS] {self.name} live on Port: {self.port:<4} | [{status_icon}] | Core: {device_mode}")
+                print(f" -> [LINK SUCCESS] {self.name} live on: {self.target_address:<20} | [{status_icon}] | Core: {device_mode}")
                 return True
         except:
             pass
-        print(f" -> [LINK CRASHED] {self.name} failed handshake response on Port: {self.port:<4}")
+        print(f" -> [LINK CRASHED] {self.name} failed handshake response on: {self.target_address:<20}")
         return False
 
     def force_hardware_reset(self):
@@ -86,19 +86,21 @@ class LiveTargetWalker:
 
         # STAGE B: ACCUMULATIVE WALK EVOLUTION LOOP
         final_density = None
+        
+        dt = 0.1  
+        
         for step_idx in range(steps):
-            current_t = (step_idx + 1) * 0.1  
             try:
                 payload = {
                     "noise": float(noise_level), 
-                    "seed": int(seed_val), 
-                    "t": float(current_t)
+                    "seed": int(seed_val) + int(step_idx), 
+                    "t": float(dt)                         
                 }
                 res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
                 if res.status_code == 200:
                     final_density = np.array(res.json().get('probability_density'))
                 else:
-                    print(f"⚠️ [API ERROR] Port {self.port} returned {res.status_code}: {res.text}")
+                    print(f"⚠️ [API ERROR] Node {self.name} ({self.target_address}) returned {res.status_code}: {res.text}")
             except:
                 pass
 
@@ -116,7 +118,6 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
     phi_theoretical = float(phase_delta) if config_id in ["B", "D"] else 0.0
     if config_id in ["B", "D"]: qc.p(phi_theoretical, 0)  
 
-    # ✅ FIXED: Standardized IBM Qiskit Statevector extraction to match WP2 logic
     state = Statevector(qc)
     amplitudes = state.data
     w_total = np.abs(amplitudes[0])**2 + np.abs(amplitudes[1])**2 + 1e-9
@@ -264,19 +265,22 @@ def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight')
     plt.close()
     print("🏆 [SUCCESS] Pure real-physics plotting loops and table assemblies are fully closed.")
+
 if __name__ == "__main__":
     NUM_SEEDS = 20
     EVOLVE_STEPS = 10  
     target_noise = 0.10        
-    global_phase_delta = 0.05  
+    global_phase_delta = 0.85  
     
     target_qubits = 1        
     
     x_axis = np.linspace(-20, 20, 500)
 
-    # ✅ FIXED: SLWE API precisely mapped to the newly defined container port 3000
-    slwe_target = LiveTargetWalker(3000, "SLWE GPU Benchmark Node")
-    hsq_target = LiveTargetWalker(5011, "HSQ GPU Qubit Node")
+    REMOTE_COMP_B_IP = "127.0.0.1" #127.0.0.1
+    
+    slwe_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:3000", "SLWE Remote GPU Node")
+    hsq_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:5011", "HSQ Local GPU Qubit Node")
+    
     file_name = f"matrix_store_noise_{target_noise:.2f}.npy"
 
     # ==============================================================================
@@ -305,7 +309,7 @@ if __name__ == "__main__":
 
     for seed in range(NUM_SEEDS):
         current_seed = 1000 + seed
-        print(f" -> Orchestrating Seed {current_seed:<4} | Route: [SLWE:3000] <-> [HSQ:5011] | Target Noise: {target_noise}")
+        print(f" -> Orchestrating Seed {current_seed:<4} | Route: [SLWE:{slwe_target.target_address}] <-> [HSQ:{hsq_target.target_address}] | Target Noise: {target_noise}")
 
         dist_A = slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "A", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
         dist_B = slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "B", current_seed, target_noise, global_phase_delta, num_qubits=target_qubits)
@@ -319,6 +323,16 @@ if __name__ == "__main__":
 
     np.save(file_name, matrix_store, allow_pickle=True)
     print(f" 🏆 [Asset Locked] Angie's independent seed block asset locked to disk: {file_name}")
+    
+    print("\n🔍 [DEBUG] Verifying Asset Bit-wise Integrity...")
+    data = np.load(file_name, allow_pickle=True).item()
+    
+    sample_D = data["D"][0]
+    
+    import hashlib
+    hash_val = hashlib.sha256(sample_D.tobytes()).hexdigest()
+    print(f" -> Manifold [D] Seed 1000 Hash: {hash_val}")
+    
 
     # ==============================================================================
     # 🎯 STAGE 3: DATA RENDERING
