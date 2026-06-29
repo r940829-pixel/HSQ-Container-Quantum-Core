@@ -65,8 +65,8 @@ def execute_live_hardware_stress_run():
         print(f"\n[Telemetry Monitor] Testing Node Scale N={n:<3} | Available RAM: {available_ram_percent:.2f}%")
         
         # 🚨 [CRITICAL ANTI-CRASH CEILING] Aligned Circuit Breaker Activation
-        if available_ram_percent < 5.0:
-            print(f" ⚠️ [CIRCUIT BREAKER ACTIVATED] Host memory approaching catastrophic exhaustion (< 5%). Emergency cutoff triggered!")
+        if available_ram_percent < 2.0:
+            print(f" ⚠️ [CIRCUIT BREAKER ACTIVATED] Host memory approaching catastrophic exhaustion (< 2%). Emergency cutoff triggered!")
             break
             
         ram_before = psutil.virtual_memory().used / (1024**3)
