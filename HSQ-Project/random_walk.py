@@ -261,9 +261,9 @@ if __name__ == "__main__":
     NUM_SEEDS = 100
     EVOLVE_STEPS = 10  
     target_noise = 0.00        
-    global_phase_delta = 0.99  
+    global_phase_delta = 0.05  
     
-    target_qubits = 3         
+    target_qubits = 1       
     
     x_axis = np.linspace(-20, 20, 500)
 
