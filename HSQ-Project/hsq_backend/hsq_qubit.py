@@ -100,16 +100,16 @@ class HilbertSpaceSpinorQuasiparticleService:
             self.k_delta = 0.0  # FORCE PURGE
             return
 
-        machine_name = os.environ.get("COMPUTERNAME", os.environ.get("HOSTNAME", "DYNAMIC_GPU_NODE"))
-        machine_fingerprint = hash(machine_name) % 100000
-        hardware_time_entropy = int((time.time_ns() // 1000) % 100000)
+        machine_name = os.environ.get("HOSTNAME", "GPU_NODE_B")
+        char_sum = sum(ord(c) for c in machine_name)
+        nanosecond_entropy = time.time_ns()
 
         if seed_val is not None:
-            actual_seed = (int(seed_val) + int(self.current_step)) ^ hardware_time_entropy ^ machine_fingerprint
+            actual_seed = (int(seed_val) * 1103515245 + char_sum + nanosecond_entropy + int(self.current_step))
         else:
-            actual_seed = hardware_time_entropy ^ machine_fingerprint
+            actual_seed = nanosecond_entropy + char_sum
         
-        actual_seed = abs(actual_seed) % (2**31 - 1)
+        actual_seed = abs(actual_seed) % (2**32 - 1)
         
         rng = np.random.default_rng(actual_seed)
         
