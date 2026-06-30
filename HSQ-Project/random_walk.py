@@ -1,8 +1,8 @@
 # ==============================================================================
 # WP1, WP3 & WP4: ALGORITHMIC QUANTUM RANDOM WALK IBM QISKIT REAL EVOLUTION SUITE
-# [REFACTORED WITH DYNAMIC REGISTERS RESET & QUANTUM STATE FLUSHING]
+# [REFACTORED WITH DUAL-TABLE METROLOGY ANALYSIS & PAIRWISE EQUIVALENCE TESTS]
 # Fully compliant with International Journal standards: 100% Pure English Runtime.
-# Enforces Qiskit Ground Truth Q as the ABSOLUTE baseline for all statistical testing.
+# Enforces Unified Noiseless Qiskit Ground Truth Q as the Absolute Baseline.
 # Synchronized with the upgraded clean-noise HSQ & SLWE GPU microservice engines.
 # ==============================================================================
 
@@ -15,6 +15,7 @@ if "CUPY_ACCELERATORS" in os.environ:
 
 import time
 import requests
+import hashlib
 import platform
 import numpy as np
 import matplotlib
@@ -86,7 +87,6 @@ class LiveTargetWalker:
 
         # STAGE B: ACCUMULATIVE WALK EVOLUTION LOOP
         final_density = None
-        
         dt = 0.1  
         
         for step_idx in range(steps):
@@ -94,7 +94,7 @@ class LiveTargetWalker:
                 payload = {
                     "noise": float(noise_level), 
                     "seed": int(seed_val) + int(step_idx), 
-                    "t": float(dt)                         
+                    "t": float(dt)                                         
                 }
                 res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
                 if res.status_code == 200:
@@ -137,8 +137,9 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
 
 
 def quantify_metrics(p_mesh, q_ideal):
-    """ Computes metrology indices including Peak-to-Valley dynamic ratio """
-    if np.sum(p_mesh) == 0: return 0.0, 1.0, 0.0, 0.0
+    """ Computes fundamental metrology indices including Peak-to-Valley ratio """
+    if np.sum(p_mesh) == 0: 
+        return 0.0, 1.0, 0.0, 0.0
     p_mesh = np.clip(p_mesh, 1e-12, 1.0) / np.sum(p_mesh)
     q_ideal = np.clip(q_ideal, 1e-12, 1.0) / np.sum(q_ideal)
 
@@ -156,127 +157,174 @@ def quantify_metrics(p_mesh, q_ideal):
     return fidelity, tvd, symmetry, peak_valley_ratio
 
 
-def compute_95_confidence_interval(experimental_fidelities):
-    if len(experimental_fidelities) < 2: return 0.0, [0.0, 0.0], 1.0
-    ideal_baseline = np.ones(len(experimental_fidelities))
-    t_stat, p_value = stats.ttest_rel(experimental_fidelities, ideal_baseline)
-    variance_delta = experimental_fidelities - ideal_baseline
-    standard_error = variance_delta.std(ddof=1) / (len(variance_delta) ** 0.5)
-    confidence_interval = [
-        variance_delta.mean() - 1.96 * standard_error, 
-        variance_delta.mean() + 1.96 * standard_error
-    ]
-    return variance_delta.mean(), confidence_interval, p_value
-
-
-def process_and_plot_npy_assets(saved_file_name, x_mesh, steps, phase_delta):
-    if not os.path.exists(saved_file_name): return
+def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
+    """ 
+    🌟 ADVANCED DUAL-TABLE METROLOGY CRITIQUE ENGINE
+    Generates Table II (Pairwise Equivalence) and Table III (Four-Group Physical Metrics)
+    """
+    if not os.path.exists(saved_file_name):
+        print(f"❌ Error: Asset file {saved_file_name} not found.")
+        return
+    
     loaded_data = np.load(saved_file_name, allow_pickle=True).item()
     
-    q_ref_no_phase = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
-    q_ref_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
+    # Universal noiseless reference mappings
+    q_ref_noiseless_no_phase = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
+    q_ref_noiseless_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
     
-    f_data = {
-        "A": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_no_phase)))**2 for p in loaded_data["A"] if p.sum()>0]),
-        "B": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_with_phase)))**2 for p in loaded_data["B"] if p.sum()>0]),
-        "C": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_no_phase)))**2 for p in loaded_data["C"] if p.sum()>0]),
-        "D": np.array([(np.sum(np.sqrt((np.array(p)/p.sum()) * q_ref_with_phase)))**2 for p in loaded_data["D"] if p.sum()>0])
-    }
-
-    table_cell_data = []
-    validated_profiles = {}
-    
+    # --------------------------------------------------------------------------
+    # PART 1: COMPUTE PER-SEED BASE METRICS & AGGREGATE STATS (FOR TABLE III)
+    # --------------------------------------------------------------------------
     configs_meta = [
-        ("A", "Config A: Classical SLWE (P-Gate Abolished)", q_ref_no_phase),
-        ("B", "Config B: Classical SLWE (P-Gate Enforced)", q_ref_with_phase),
-        ("C", "Config C: HSQ Parametric Core I (P-Gate Abolished)", q_ref_no_phase),
-        ("D", "Config D: HSQ Parametric Core II (P-Gate Enforced)", q_ref_with_phase)
+        ("A", "Config A: SLWE (P-Gate Abolished)", q_ref_noiseless_no_phase),
+        ("B", "Config B: SLWE (P-Gate Enforced)", q_ref_noiseless_with_phase),
+        ("C", "Config C: HSQ (P-Gate Abolished)", q_ref_noiseless_no_phase),
+        ("D", "Config D: HSQ (P-Gate Enforced)", q_ref_noiseless_with_phase)
     ]
+    
+    table_3_rows = []
+    f_channels = {}  # Store fidelity vectors for exact pairwise phase math later
 
+    for cid, name, q_ref in configs_meta:
+        matrix = np.asarray(loaded_data[cid], float)
+        
+        # Extract per-seed statistical metrics
+        raw_metrics = []
+        fidelities_vector = []
+        for row in matrix:
+            fid, tvd, sym, pvr = quantify_metrics(row, q_ref)
+            raw_metrics.append([fid, tvd, sym, pvr])
+            fidelities_vector.append(fid)
+            
+        f_channels[cid] = np.array(fidelities_vector)
+        
+        metrics_arr = np.array(raw_metrics)
+        means = np.mean(metrics_arr, axis=0)
+        stds = np.std(metrics_arr, axis=0)
+        
+        table_3_rows.append([
+            name,
+            f"{means[0]*100:.2f}% ± {stds[0]*100:.2f}%",
+            f"{means[1]:.4f} ± {stds[1]:.4f}",
+            f"{means[2]:.4f} ± {stds[2]:.4f}",
+            f"{means[3]:.2f} ± {stds[3]:.2f}"
+        ])
+
+    # --------------------------------------------------------------------------
+    # PART 2: PERFORM HYPOTHESIS TESTING (FOR TABLE II)
+    # --------------------------------------------------------------------------
     print("\n======================================================================")
-    print("📊 [HSQ ARCHITECTURAL ABLATION & QUANTUM METRIC CRITIQUE (BASELINE = Q)]")
+    print("📊 [PAIRWISE HYPOTHESIS TESTING & QUANTUM EQUIVALENCE CRITIQUE]")
     print("======================================================================")
 
-    for cid, name, q_current_reference in configs_meta:
-        matrix = np.array(loaded_data[cid])
-        valid_rows = [row for row in matrix if np.sum(row) > 0]
-        if len(valid_rows) == 0:
-            validated_profiles[cid] = np.zeros(500)
-        else:
-            residuals = np.array([np.sqrt(np.sum((r - q_current_reference)**2)) for r in valid_rows])
-            median_res = np.median(residuals)
-            std_res = np.std(residuals) + 1e-9
-            valid_indices = np.where(abs(residuals - median_res) <= 1.5 * std_res)[0]
-            if len(valid_indices) == 0: valid_indices = np.arange(len(valid_rows))
-            validated_profiles[cid] = np.mean(np.array(valid_rows)[valid_indices], axis=0)
+    def run_pairwise_comparison(f1, f2, k1_name, k2_name, hypothesis_title):
+        d = f1 - f2  # Seed-by-seed delta profile
+        se = d.std(ddof=1) / np.sqrt(len(d))
+        ci_bounds = [d.mean() - 1.96 * se, d.mean() + 1.96 * se]
+        
+        p_t = stats.ttest_rel(f1, f2).pvalue
+        try:
+            p_w = stats.wilcoxon(f1, f2).pvalue
+        except:
+            p_w = 1.0
+            
+        is_equivalent = (p_t > 0.05) and (ci_bounds[0] < 0.0 < ci_bounds[1])
+        status_string = "EQUIVALENT (No Statistically Significant Difference)" if is_equivalent else "SIGNIFICANT VARIANCE DETECTED"
+        
+        print(f" -> Testing [{hypothesis_title}] ({k1_name} vs {k2_name}):")
+        print(f"    Mean Δfid = {d.mean():+.4e} | 95% CI = [{ci_bounds[0]:+.4f}, {ci_bounds[1]:+.4f}]")
+        print(f"    Paired t-test p = {p_t:.4f} | Wilcoxon p = {p_w:.4f}")
+        print(f"    Verdict => 🏆 {status_string}\n")
+        
+        return [hypothesis_title, f"{d.mean():+.4e}", f"[{ci_bounds[0]:+.3f}, {ci_bounds[1]:+.3f}]", f"{p_t:.4f}", f"{p_w:.4f}", "Equivalent" if is_equivalent else "Different"]
 
-        raw_stats = [quantify_metrics(row, q_current_reference) for row in matrix]
-        arr = np.array(raw_stats)
-        means = np.mean(arr, axis=0)
-        stds = np.std(arr, axis=0)
-
-        mean_delta, ci_bounds, p_val = compute_95_confidence_interval(f_data[cid])
-        print(f" -> Manifold [{cid}] vs Correct Baseline Q: Mean Δ={mean_delta:+.4e} | 95% CI=[{ci_bounds[0]:.4f}, {ci_bounds[1]:.4f}] | p={p_val:.4f}")
-
-        table_cell_data.append([
-            name, 
-            f"{means[0]*100:.2f}% ± {stds[0]*100:.2f}%", 
-            f"{means[1]:.4f} ± {stds[1]:.4f}", 
-            f"{means[2]:.4f} ± {stds[2]:.4f}", 
-            f"{means[3]:.2f} ± {stds[3]:.2f}", 
-            f"[{ci_bounds[0]:+.3f}, {ci_bounds[1]:+.3f}]", 
-            f"{p_val:.4f}"
-        ])
+    row_hsq = run_pairwise_comparison(f_channels["C"], f_channels["D"], "Config C", "Config D", "Operator On vs Off (HSQ: C vs D)")
+    row_backend = run_pairwise_comparison(f_channels["A"], f_channels["C"], "Config A", "Config C", "Backend Topology (SLWE vs HSQ: A vs C)")
     print("======================================================================\n")
 
-    # --- PLOT GENERATION: TABLE II ---
-    fig, ax = plt.subplots(figsize=(15.5, 2.5)) 
-    ax.axis('off')
-    headers = ["Phase Ablation Group", "Quantum Fidelity (F)", "Total Variation Dist. (D)", "Symmetry Index (S)", "Peak-to-Valley Ratio", "Paired 95% CI (vs Q)", "Asymptotic p-value (vs Q)"]
-    col_widths = [1.3, 0.7, 0.7, 0.7, 0.7, 1.0, 0.6]
-    table = ax.table(cellText=table_cell_data, colLabels=headers, cellLoc='center', loc='center', colWidths=col_widths)
-    table.auto_set_font_size(False); table.set_fontsize(8.5)
-    for (row_idx, col_idx), cell in table.get_celld().items():
+    # --------------------------------------------------------------------------
+    # PART 3: SCHOLASTIC ASSET RENDERING (TABLE II & TABLE III)
+    # --------------------------------------------------------------------------
+    # Rendering Table II: Pairwise Mathematical Validation
+    table_2_cell_data = [row_hsq, row_backend]
+    fig2, ax2 = plt.subplots(figsize=(12.0, 1.8)) 
+    ax2.axis('off')
+    headers_2 = ["Pairwise Testing Group", "Mean Fidelity Delta (Δfid)", "Paired 95% CI", "Paired t-test p-value", "Wilcoxon p-value", "Structural Metric Verdict"]
+    col_widths_2 = [1.8, 1.1, 0.9, 1.0, 0.9, 1.1]
+    t2 = ax2.table(cellText=table_2_cell_data, colLabels=headers_2, cellLoc='center', loc='center', colWidths=col_widths_2)
+    t2.auto_set_font_size(False); t2.set_fontsize(9.0)
+    for (r, c), cell in t2.get_celld().items():
         cell.set_linewidth(0.6)
-        if row_idx == 0:
+        if r == 0:
             cell.set_text_props(weight='bold', color='#111111')
-            cell.set_facecolor('#F0F0F0'); cell.set_height(0.38)
+            cell.set_facecolor('#F5F5F5')  # 🌟 拆開單獨呼叫，修正 Chaining 漏洞
+            cell.set_height(0.38)
         else:
-            cell.set_text_props(color='#222222'); cell.set_height(0.32)
-            
-    plt.title("TABLE II\nMulti-Seed Quantitative Phase Operator Ablation Matrix under Validated Baseline Q Constraints", fontsize=10, fontweight='bold', pad=10)
-    plt.savefig("table_2_noise_stress.png", dpi=300, bbox_inches='tight')
+            cell.set_height(0.32)
+    plt.title("TABLE II\nPairwise Structural Equivalence Matrix Under Unitary Baseline Q Constraints", fontsize=10, fontweight='bold', pad=12)
+    plt.savefig("table_2_pairwise.png", dpi=300, bbox_inches='tight')
     plt.close()
 
-    # --- PLOT GENERATION: FIG 2 ---
+    # Rendering Table III: Individual Manifest Metrics
+    fig3, ax3 = plt.subplots(figsize=(12.0, 2.5))
+    ax3.axis('off')
+    headers_3 = ["Phase Ablation Group", "Quantum Fidelity (F)", "Total Variation Dist. (D)", "Symmetry Index (S)", "Peak-to-Valley Ratio"]
+    col_widths_3 = [1.8, 1.1, 1.1, 1.1, 1.1]
+    t3 = ax3.table(cellText=table_3_rows, colLabels=headers_3, cellLoc='center', loc='center', colWidths=col_widths_3)
+    t3.auto_set_font_size(False); t3.set_fontsize(9.0)
+    for (r, c), cell in t3.get_celld().items():
+        cell.set_linewidth(0.6)
+        if r == 0:
+            cell.set_text_props(weight='bold', color='#111111')
+            cell.set_facecolor('#F5F5F5')  # 🌟 這裡也要同步拆開
+            cell.set_height(0.38)
+        else:
+            cell.set_height(0.32)
+    plt.title("TABLE III\nEnsemble Numerical Metrology Manifest Mapped to Noiseless Theoretical Limit", fontsize=10, fontweight='bold', pad=12)
+    plt.savefig("table_3_metrics.png", dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # --------------------------------------------------------------------------
+    # PART 4: EVOLUTION PROFILE GRAPH GENERATION
+    # --------------------------------------------------------------------------
+    def extract_clean_mean(key):
+        matrix = np.array(loaded_data[key])
+        valid_rows = [row for row in matrix if np.sum(row) > 0]
+        if len(valid_rows) == 0: return np.zeros(500)
+        return np.mean(valid_rows, axis=0)
+
     fig_qrw, ax_qrw = plt.subplots(figsize=(9, 4.5))
-    ax_qrw.plot(x_mesh, q_ref_no_phase, 'k:', label='IBM Qiskit Ground Truth (Symmetric Reference Q)', linewidth=1.8, alpha=0.7)
-    ax_qrw.plot(x_mesh, validated_profiles["A"], color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
-    ax_qrw.plot(x_mesh, validated_profiles["B"], color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
-    ax_qrw.plot(x_mesh, validated_profiles["C"], color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
-    ax_qrw.plot(x_mesh, validated_profiles["D"], color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
+    ax_qrw.plot(x_mesh, q_ref_noiseless_no_phase, 'k:', label='IBM Qiskit Ground Truth (Symmetric Reference Q)', linewidth=1.8, alpha=0.7)
+    ax_qrw.plot(x_mesh, extract_clean_mean("A"), color='#E67E22', linestyle='-.', label='Config A: SLWE (P-Gate Abolished)', linewidth=1.2)
+    ax_qrw.plot(x_mesh, extract_clean_mean("B"), color='#E74C3C', linestyle='--', label='Config B: Classical SLWE (P-Gate Enforced)', linewidth=1.5)
+    ax_qrw.plot(x_mesh, extract_clean_mean("C"), color='#9B59B6', linestyle='-', label='Config C: HSQ (P-Gate Abolished)', linewidth=1.5)
+    ax_qrw.plot(x_mesh, extract_clean_mean("D"), color='#2ECC71', linestyle='-', label='Config D: HSQ (P-Gate Enforced)', linewidth=2.5)
+    
     ax_qrw.set_xlabel('Spatial Grid Position Coordinate (x)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_ylabel('Cross-Validated Ensemble Probability Density P(x)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_xlim(-20, 20)
-    ax_qrw.set_ylim(0, max(q_ref_no_phase) * 1.35)
+    ax_qrw.set_ylim(0, max(q_ref_noiseless_no_phase) * 1.35)
     ax_qrw.grid(True, linestyle=':', alpha=0.5)
-    for label in (ax_qrw.get_xticklabels() + ax_qrw.get_yticklabels()): label.set_fontname('Times New Roman')
+    
+    for label in (ax_qrw.get_xticklabels() + ax_qrw.get_yticklabels()): 
+        label.set_fontname('Times New Roman')
     ax_qrw.legend(loc='upper right', frameon=True, facecolor='#FFFFFF', edgecolor='#DDDDDD', fontsize=9.5)
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight')
     plt.close()
-    print("🏆 [SUCCESS] Pure real-physics plotting loops and table assemblies are fully closed.")
+    
+    print("🏆 [SUCCESS] Dual-table statistical validation and physics plots are successfully closed.")
+
 
 if __name__ == "__main__":
     NUM_SEEDS = 20
     EVOLVE_STEPS = 10  
     target_noise = 0.10        
-    global_phase_delta = 0.85  
-    
+    global_phase_delta = 0.05  
     target_qubits = 1        
-    
     x_axis = np.linspace(-20, 20, 500)
 
-    REMOTE_COMP_B_IP = "127.0.0.1" #127.0.0.1
+    # 🌟 UPDATED: Linux server node address configuration 
+    REMOTE_COMP_B_IP = "127.0.0.1" 
     
     slwe_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:3000", "SLWE Remote GPU Node")
     hsq_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:5011", "HSQ Local GPU Qubit Node")
@@ -326,15 +374,12 @@ if __name__ == "__main__":
     
     print("\n🔍 [DEBUG] Verifying Asset Bit-wise Integrity...")
     data = np.load(file_name, allow_pickle=True).item()
-    
     sample_D = data["D"][0]
     
-    import hashlib
     hash_val = hashlib.sha256(sample_D.tobytes()).hexdigest()
     print(f" -> Manifold [D] Seed 1000 Hash: {hash_val}")
-    
 
     # ==============================================================================
-    # 🎯 STAGE 3: DATA RENDERING
+    # 🎯 STAGE 3: DATA RENDERING (INTEGRATED PAIRWISE ANALYSIS)
     # ==============================================================================
-    process_and_plot_npy_assets(file_name, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
+    process_and_pairwise_test(file_name, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
