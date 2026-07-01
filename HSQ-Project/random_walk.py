@@ -257,7 +257,7 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         cell.set_linewidth(0.6)
         if r == 0:
             cell.set_text_props(weight='bold', color='#111111')
-            cell.set_facecolor('#F5F5F5')  # 🌟 拆開單獨呼叫，修正 Chaining 漏洞
+            cell.set_facecolor('#F5F5F5')  
             cell.set_height(0.38)
         else:
             cell.set_height(0.32)
@@ -276,7 +276,7 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         cell.set_linewidth(0.6)
         if r == 0:
             cell.set_text_props(weight='bold', color='#111111')
-            cell.set_facecolor('#F5F5F5')  # 🌟 這裡也要同步拆開
+            cell.set_facecolor('#F5F5F5')  
             cell.set_height(0.38)
         else:
             cell.set_height(0.32)
