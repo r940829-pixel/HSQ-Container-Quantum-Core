@@ -192,7 +192,7 @@ async def route_instruction(payload: InstructionPayload):
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
         with simulation_lock:
             relative_phase = float(np.angle(hsq_qubit.a) - np.angle(hsq_qubit.b))
-        tensor_bus.set(payload.bus_key, str(metric_val))
+        tensor_bus.set(payload.bus_key, str(relative_phase))
         return {"status": "success", "gate": "Export Tensor Metric", "exported_metric": metric_val}
 
     elif gate_name == "apply_conditional_phase":
