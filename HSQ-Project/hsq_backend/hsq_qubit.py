@@ -191,7 +191,7 @@ async def route_instruction(payload: InstructionPayload):
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
         with simulation_lock:
-            metric_val = hsq_qubit.extract_topological_metric()
+            relative_phase = float(np.angle(hsq_qubit.a) - np.angle(hsq_qubit.b))
         tensor_bus.set(payload.bus_key, str(metric_val))
         return {"status": "success", "gate": "Export Tensor Metric", "exported_metric": metric_val}
 
@@ -201,9 +201,9 @@ async def route_instruction(payload: InstructionPayload):
         control_metric_str = tensor_bus.get(payload.source_bus_key)
         if control_metric_str is None:
             raise HTTPException(status_code=404, detail=f"Metric {payload.source_bus_key} not found on Tensor Bus")
-        control_metric = float(control_metric_str)
+        source_phase = float(control_metric_str)
         with simulation_lock:
-            true_unitary_phase = payload.delta_phi * control_metric
+            true_unitary_phase = payload.delta_phi * np.cos(source_phase)
             hsq_qubit.apply_phase_rotation_gate(true_unitary_phase)
             a_mag, b_mag = float(np.abs(hsq_qubit.a)), float(np.abs(hsq_qubit.b))
         return {
