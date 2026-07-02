@@ -201,10 +201,9 @@ async def route_instruction(payload: InstructionPayload):
         control_metric_str = tensor_bus.get(payload.source_bus_key)
         if control_metric_str is None:
             raise HTTPException(status_code=404, detail=f"Metric {payload.source_bus_key} not found on Tensor Bus")
-        control_metric_str = tensor_bus.get(payload.source_bus_key)
-        control_metric = float(control_metric_str) if control_metric_str else 1.0
+        control_metric = float(control_metric_str)
         with simulation_lock:
-            true_unitary_phase = payload.delta_phi
+            true_unitary_phase = payload.delta_phi * control_metric
             hsq_qubit.apply_phase_rotation_gate(true_unitary_phase)
             a_mag, b_mag = float(np.abs(hsq_qubit.a)), float(np.abs(hsq_qubit.b))
         return {
