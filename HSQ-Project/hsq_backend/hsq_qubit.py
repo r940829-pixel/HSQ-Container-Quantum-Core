@@ -204,12 +204,15 @@ async def route_instruction(payload: InstructionPayload):
         
         control_metric = float(control_metric_str)
         with simulation_lock:
-            hsq_qubit.apply_conditional_entanglement_phase(control_metric)
+            true_unitary_phase = (np.pi * control_metric) + payload.delta_phi
+            hsq_qubit.apply_phase_rotation_gate(true_unitary_phase)
             a_mag, b_mag = float(np.abs(hsq_qubit.a)), float(np.abs(hsq_qubit.b))
         return {
-            "status": "success", "gate": "Conditional Phase Intersection",
-            "applied_phase_shift": float(np.pi * control_metric),
-            "a_magnitude": a_mag, "b_magnitude": b_mag
+            "status": "success", 
+            "gate": "Conditional Unitary Phase Intersection",
+            "applied_phase_shift": true_unitary_phase,
+            "a_magnitude": a_mag, 
+            "b_magnitude": b_mag
         }
 
     with simulation_lock:
