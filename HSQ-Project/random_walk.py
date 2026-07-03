@@ -3,13 +3,12 @@
 # [REFACTORED WITH DUAL-TABLE METROLOGY ANALYSIS & PAIRWISE EQUIVALENCE TESTS]
 # Fully compliant with International Journal standards: 100% Pure English Runtime.
 # Enforces Unified Noiseless Qiskit Ground Truth Q as the Absolute Baseline.
-# Synchronized with the upgraded clean-noise HSQ & SLWE GPU microservice engines.
+# Fixed: Eliminated redundant loops on REST endpoints to align with true WSL microservices.
 # ==============================================================================
 
 import os
 import sys
 
-# 🌟 CRITICAL FIX: Dynamically purge leftover toxic environment variables from Windows memory
 if "CUPY_ACCELERATORS" in os.environ:
     del os.environ["CUPY_ACCELERATORS"]
 
@@ -42,14 +41,12 @@ class LiveTargetWalker:
         self.cuda_active = False
 
     def check_live_handshake(self):
-        """ Pings the target node and parses the 'cuda_accelerated' state to confirm alignment. """
         custom_headers = {"Connection": "close"}
         try:
             res = requests.get(f"{self.url}/ping", headers=custom_headers, timeout=2.0)
             if res.status_code == 200:
                 device_mode = res.json().get("device", "Unknown Core")
                 self.cuda_active = res.json().get("cuda_accelerated", False)
-                
                 status_icon = "⚡ CUDA ACTIVE" if self.cuda_active else "💻 CPU MODE"
                 print(f" -> [LINK SUCCESS] {self.name} live on: {self.target_address:<20} | [{status_icon}] | Core: {device_mode}")
                 return True
@@ -59,22 +56,19 @@ class LiveTargetWalker:
         return False
 
     def force_hardware_reset(self):
-        """ Forcibly flushes and re-allocates the remote complex-field register spaces """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         try:
             res = requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=1.0)
-            if res.status_code != 200:
-                print(f" -> [RESET WARNING] Node {self.name} replied with status {res.status_code}")
-        except Exception as e:
-            print(f" -> [RESET EXCEPTION] {self.name} offline during flush: {e}")
-        time.sleep(0.02)
+        except Exception:
+            pass
+        time.sleep(0.01)
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta, num_qubits=1):
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         
         self.force_hardware_reset()
 
-        # STAGE A: GATE INITIALIZATION 
+        # STAGE A: PHASE GATE INITIALIZATION
         try:
             requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=1.5)
             if config_id in ["B", "D"]:
@@ -85,24 +79,24 @@ class LiveTargetWalker:
         except:
             pass
 
-        # STAGE B: ACCUMULATIVE WALK EVOLUTION LOOP
+        # STAGE B: SINGLE-SHOT ACCUMULATIVE WALK EVOLUTION
         final_density = None
         dt = 0.1  
+        total_t = float(steps * dt) 
         
-        for step_idx in range(steps):
-            try:
-                payload = {
-                    "noise": float(noise_level), 
-                    "seed": int(seed_val) + int(step_idx), 
-                    "t": float(dt)                                         
-                }
-                res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
-                if res.status_code == 200:
-                    final_density = np.array(res.json().get('probability_density'))
-                else:
-                    print(f"⚠️ [API ERROR] Node {self.name} ({self.target_address}) returned {res.status_code}: {res.text}")
-            except:
-                pass
+        try:
+            payload = {
+                "noise": float(noise_level), 
+                "seed": int(seed_val), 
+                "t": total_t                                         
+            }
+            res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=3.5)
+            if res.status_code == 200:
+                final_density = np.array(res.json().get('probability_density'))
+            else:
+                print(f"⚠️ [API ERROR] Node {self.name} returned {res.status_code}")
+        except Exception as e:
+            print(f"⚠️ [API EXCEPTION] Connection loss during evolve stage: {e}")
 
         self.force_hardware_reset()
         
@@ -116,7 +110,8 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
     qc = QuantumCircuit(1)
     qc.h(0)  
     phi_theoretical = float(phase_delta) if config_id in ["B", "D"] else 0.0
-    if config_id in ["B", "D"]: qc.p(phi_theoretical, 0)  
+    if config_id in ["B", "D"]: 
+        qc.p(phi_theoretical, 0)  
 
     state = Statevector(qc)
     amplitudes = state.data
@@ -126,6 +121,7 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
     t = steps * 0.1
     current_sigma = np.sqrt(2.0**2 + 0.1 * t)
     center_shift = 0.8 * t
+    
     envelope_a = np.exp(-((x_mesh + center_shift)**2) / (2 * current_sigma**2))
     envelope_b = np.exp(-((x_mesh - center_shift)**2) / (2 * current_sigma**2))
     time_phase = 2.0 * (w_a + w_b) * t
@@ -137,7 +133,6 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
 
 
 def quantify_metrics(p_mesh, q_ideal):
-    """ Computes fundamental metrology indices including Peak-to-Valley ratio """
     if np.sum(p_mesh) == 0: 
         return 0.0, 1.0, 0.0, 0.0
     p_mesh = np.clip(p_mesh, 1e-12, 1.0) / np.sum(p_mesh)
@@ -158,22 +153,17 @@ def quantify_metrics(p_mesh, q_ideal):
 
 
 def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
-    """ 
-    🌟 ADVANCED DUAL-TABLE METROLOGY CRITIQUE ENGINE
-    Generates Table II (Pairwise Equivalence) and Table III (Four-Group Physical Metrics)
-    """
     if not os.path.exists(saved_file_name):
         print(f"❌ Error: Asset file {saved_file_name} not found.")
         return
     
     loaded_data = np.load(saved_file_name, allow_pickle=True).item()
     
-    # Universal noiseless reference mappings
     q_ref_noiseless_no_phase = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
     q_ref_noiseless_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
     
     # --------------------------------------------------------------------------
-    # PART 1: COMPUTE PER-SEED BASE METRICS & AGGREGATE STATS (FOR TABLE III)
+    # PART 1: METROLOGY SUMMARY COMPILATION
     # --------------------------------------------------------------------------
     configs_meta = [
         ("A", "Config A: SLWE (P-Gate Abolished)", q_ref_noiseless_no_phase),
@@ -183,21 +173,19 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     ]
     
     table_3_rows = []
-    f_channels = {}  # Store fidelity vectors for exact pairwise phase math later
+    f_channels = {}  
 
     for cid, name, q_ref in configs_meta:
         matrix = np.asarray(loaded_data[cid], float)
-        
-        # Extract per-seed statistical metrics
         raw_metrics = []
         fidelities_vector = []
+        
         for row in matrix:
             fid, tvd, sym, pvr = quantify_metrics(row, q_ref)
             raw_metrics.append([fid, tvd, sym, pvr])
             fidelities_vector.append(fid)
             
         f_channels[cid] = np.array(fidelities_vector)
-        
         metrics_arr = np.array(raw_metrics)
         means = np.mean(metrics_arr, axis=0)
         stds = np.std(metrics_arr, axis=0)
@@ -211,14 +199,14 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         ])
 
     # --------------------------------------------------------------------------
-    # PART 2: PERFORM HYPOTHESIS TESTING (FOR TABLE II)
+    # PART 2: PAIRWISE HYPOTHESIS CRITIQUE
     # --------------------------------------------------------------------------
     print("\n======================================================================")
     print("📊 [PAIRWISE HYPOTHESIS TESTING & QUANTUM EQUIVALENCE CRITIQUE]")
     print("======================================================================")
 
     def run_pairwise_comparison(f1, f2, k1_name, k2_name, hypothesis_title):
-        d = f1 - f2  # Seed-by-seed delta profile
+        d = f1 - f2  
         se = d.std(ddof=1) / np.sqrt(len(d))
         ci_bounds = [d.mean() - 1.96 * se, d.mean() + 1.96 * se]
         
@@ -243,43 +231,42 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     print("======================================================================\n")
 
     # --------------------------------------------------------------------------
-    # PART 3: SCHOLASTIC ASSET RENDERING (TABLE II & TABLE III)
+    # PART 3: SCHOLASTIC ASSET RENDERING (TABLE II & TABLE III WITH WIDTH FIX)
     # --------------------------------------------------------------------------
-    # Rendering Table II: Pairwise Mathematical Validation
     table_2_cell_data = [row_hsq, row_backend]
-    fig2, ax2 = plt.subplots(figsize=(12.0, 1.8)) 
+    fig2, ax2 = plt.subplots(figsize=(13.5, 2.2)) 
     ax2.axis('off')
     headers_2 = ["Pairwise Testing Group", "Mean Fidelity Delta (Δfid)", "Paired 95% CI", "Paired t-test p-value", "Wilcoxon p-value", "Structural Metric Verdict"]
-    col_widths_2 = [1.8, 1.1, 0.9, 1.0, 0.9, 1.1]
+    col_widths_2 = [2.2, 1.2, 1.0, 1.2, 1.0, 1.2]
     t2 = ax2.table(cellText=table_2_cell_data, colLabels=headers_2, cellLoc='center', loc='center', colWidths=col_widths_2)
-    t2.auto_set_font_size(False); t2.set_fontsize(9.0)
+    t2.auto_set_font_size(False); t2.set_fontsize(9.5)
     for (r, c), cell in t2.get_celld().items():
         cell.set_linewidth(0.6)
         if r == 0:
-            cell.set_text_props(weight='bold', color='#111111')
+            cell.set_text_props(weight='bold')
             cell.set_facecolor('#F5F5F5')  
-            cell.set_height(0.38)
+            cell.set_height(0.35)
         else:
-            cell.set_height(0.32)
+            cell.set_height(0.28)
     plt.title("TABLE II\nPairwise Structural Equivalence Matrix Under Unitary Baseline Q Constraints", fontsize=10, fontweight='bold', pad=12)
     plt.savefig("table_2_pairwise.png", dpi=300, bbox_inches='tight')
     plt.close()
 
-    # Rendering Table III: Individual Manifest Metrics
-    fig3, ax3 = plt.subplots(figsize=(12.0, 2.5))
+    # Rendering Table III
+    fig3, ax3 = plt.subplots(figsize=(13.5, 2.8))
     ax3.axis('off')
     headers_3 = ["Phase Ablation Group", "Quantum Fidelity (F)", "Total Variation Dist. (D)", "Symmetry Index (S)", "Peak-to-Valley Ratio"]
-    col_widths_3 = [1.8, 1.1, 1.1, 1.1, 1.1]
+    col_widths_3 = [2.2, 1.2, 1.2, 1.2, 1.2]
     t3 = ax3.table(cellText=table_3_rows, colLabels=headers_3, cellLoc='center', loc='center', colWidths=col_widths_3)
-    t3.auto_set_font_size(False); t3.set_fontsize(9.0)
+    t3.auto_set_font_size(False); t3.set_fontsize(9.5)
     for (r, c), cell in t3.get_celld().items():
         cell.set_linewidth(0.6)
         if r == 0:
-            cell.set_text_props(weight='bold', color='#111111')
+            cell.set_text_props(weight='bold')
             cell.set_facecolor('#F5F5F5')  
-            cell.set_height(0.38)
+            cell.set_height(0.35)
         else:
-            cell.set_height(0.32)
+            cell.set_height(0.28)
     plt.title("TABLE III\nEnsemble Numerical Metrology Manifest Mapped to Noiseless Theoretical Limit", fontsize=10, fontweight='bold', pad=12)
     plt.savefig("table_3_metrics.png", dpi=300, bbox_inches='tight')
     plt.close()
@@ -323,7 +310,6 @@ if __name__ == "__main__":
     target_qubits = 1        
     x_axis = np.linspace(-20, 20, 500)
 
-    # 🌟 UPDATED: Linux server node address configuration 
     REMOTE_COMP_B_IP = "127.0.0.1" 
     
     slwe_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:3000", "SLWE Remote GPU Node")
@@ -372,14 +358,7 @@ if __name__ == "__main__":
     np.save(file_name, matrix_store, allow_pickle=True)
     print(f" 🏆 [Asset Locked] Angie's independent seed block asset locked to disk: {file_name}")
     
-    print("\n🔍 [DEBUG] Verifying Asset Bit-wise Integrity...")
-    data = np.load(file_name, allow_pickle=True).item()
-    sample_D = data["D"][0]
-    
-    hash_val = hashlib.sha256(sample_D.tobytes()).hexdigest()
-    print(f" -> Manifold [D] Seed 1000 Hash: {hash_val}")
-
     # ==============================================================================
-    # 🎯 STAGE 3: DATA RENDERING (INTEGRATED PAIRWISE ANALYSIS)
+    # 🎯 STAGE 3: DATA RENDERING
     # ==============================================================================
     process_and_pairwise_test(file_name, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
