@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Docker Container](https://img.shields.io/badge/docker-WSL2-lightgrey.svg)](https://www.docker.com/)
+[![DOI](https://zenodo.org/badge/1259120816.svg)](https://doi.org/10.5281/zenodo.20577466)
 
 This repository implements the official computing framework and evaluation suite for a container-native quantum simulation platform designed to benchmark the fault-tolerant transport dynamics of **Hilbert-Space Spinor Quasiparticles (HSQ)** under controlled phase-damping decoherence.
 
@@ -184,11 +185,4 @@ To perform live CPU/GPU parallel computing benchmarks and evaluate time complexi
 python benchmark_scaling.py
 ```
 
----
-
-```text
-This will compile the host machine's runtime specs and save the dual-axes manuscript chart fig7_hardware_scaling_curve.png complete with mathematical error bars.
-🎓 Peer-Review and IEEE Journal Access TokenFor double-blind peer-review purposes, this repository is hosted on Anonymous GitHub to protect author identity prior to formal acceptance. Reviewers can access, inspect, and independently reproduce the full unredacted source code framework.
-🔗 Digital Object Identifier (DOI) and CitationNote: The permanent Digital Object Identifier (DOI) archive token issued via the Zenodo registry will be unsealed and appended below upon transitioning this archive into a Public Open-Source Repository post-defense.
-```
 ---
