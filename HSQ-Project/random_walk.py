@@ -3,7 +3,7 @@
 # [REFACTORED WITH DUAL-TABLE METROLOGY ANALYSIS & PAIRWISE EQUIVALENCE TESTS]
 # Fully compliant with International Journal standards: 100% Pure English Runtime.
 # Enforces Unified Noiseless Qiskit Ground Truth Q as the Absolute Baseline.
-# Fixed: Eliminated redundant loops on REST endpoints to align with true WSL microservices.
+# Fixed: Aligned with compliant statevector payloads and strict inter-node protocols.
 # ==============================================================================
 
 import os
@@ -56,16 +56,21 @@ class LiveTargetWalker:
         return False
 
     def force_hardware_reset(self):
+        """ Forcibly flushes the remote register spaces back to vacuum ground states. """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         try:
             res = requests.post(f"{self.url}/reset", json={}, headers=custom_headers, timeout=1.0)
+            if res.status_code != 200:
+                print(f" -> [RESET WARNING] Node {self.name} replied with status {res.status_code}")
         except Exception:
             pass
-        time.sleep(0.01)
+        time.sleep(0.02)
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta, num_qubits=1):
+        """ Aligned seamlessly with the production-grade HSQ microservice single-shot endpoint. """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         
+        # Ensure clear vacuum environment isolation before injection loop opens
         self.force_hardware_reset()
 
         # STAGE A: PHASE GATE INITIALIZATION
@@ -76,8 +81,8 @@ class LiveTargetWalker:
                               json={"gate": "phase", "delta_phi": float(phase_delta)}, 
                               headers=custom_headers, 
                               timeout=1.5)
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ [GATE EXCEPTION] Failed to map initial state preparation: {e}")
 
         # STAGE B: SINGLE-SHOT ACCUMULATIVE WALK EVOLUTION
         final_density = None
@@ -94,10 +99,11 @@ class LiveTargetWalker:
             if res.status_code == 200:
                 final_density = np.array(res.json().get('probability_density'))
             else:
-                print(f"⚠️ [API ERROR] Node {self.name} returned {res.status_code}")
+                print(f"⚠️ [API ERROR] Node {self.name} returned status code {res.status_code}")
         except Exception as e:
-            print(f"⚠️ [API EXCEPTION] Connection loss during evolve stage: {e}")
+            print(f"⚠️ [API EXCEPTION] Connection timed out during evolution cycle: {e}")
 
+        # Re-flush container cache state to maintain inter-seed idempotency boundary
         self.force_hardware_reset()
         
         if final_density is not None and final_density.sum() > 0:
@@ -115,7 +121,7 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
 
     state = Statevector(qc)
     amplitudes = state.data
-    w_total = np.abs(amplitudes[0])**2 + np.abs(amplitudes[1])**2 + 1e-9
+    w_total = np.abs(amplitudes[0])**2 + np.abs(amplitudes[1])**2 + 1e-12
     w_a, w_b = np.abs(amplitudes[0])**2 / w_total, np.abs(amplitudes[1])**2 / w_total
 
     t = steps * 0.1
@@ -143,11 +149,11 @@ def quantify_metrics(p_mesh, q_ideal):
 
     mid_point = len(p_mesh) // 2
     m_l, m_r = float(np.sum(p_mesh[:mid_point])), float(np.sum(p_mesh[mid_point:]))
-    symmetry = 1.0 - (abs(m_l - m_r) / (m_l + m_r + 1e-9))
+    symmetry = 1.0 - (abs(m_l - m_r) / (m_l + m_r + 1e-12))
 
     peak_val = float(max(p_mesh))
     valley_val = float(p_mesh[mid_point]) 
-    peak_valley_ratio = peak_val / (valley_val + 1e-9)
+    peak_valley_ratio = peak_val / (valley_val + 1e-12)
 
     return fidelity, tvd, symmetry, peak_valley_ratio
 
@@ -163,7 +169,7 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     q_ref_noiseless_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
     
     # --------------------------------------------------------------------------
-    # PART 1: METROLOGY SUMMARY COMPILATION
+    # PART 1: METROLOGY SUMMARY COMPILATION (TABLE III SOURCE)
     # --------------------------------------------------------------------------
     configs_meta = [
         ("A", "Config A: SLWE (P-Gate Abolished)", q_ref_noiseless_no_phase),
@@ -199,7 +205,7 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         ])
 
     # --------------------------------------------------------------------------
-    # PART 2: PAIRWISE HYPOTHESIS CRITIQUE
+    # PART 2: PAIRWISE HYPOTHESIS TESTINGCRITIQUE (TABLE II SOURCE)
     # --------------------------------------------------------------------------
     print("\n======================================================================")
     print("📊 [PAIRWISE HYPOTHESIS TESTING & QUANTUM EQUIVALENCE CRITIQUE]")
@@ -231,7 +237,7 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     print("======================================================================\n")
 
     # --------------------------------------------------------------------------
-    # PART 3: SCHOLASTIC ASSET RENDERING (TABLE II & TABLE III WITH WIDTH FIX)
+    # PART 3: SCHOLASTIC ASSET RENDERING (TABLE II & TABLE III RENDERING)
     # --------------------------------------------------------------------------
     table_2_cell_data = [row_hsq, row_backend]
     fig2, ax2 = plt.subplots(figsize=(13.5, 2.2)) 
@@ -359,6 +365,6 @@ if __name__ == "__main__":
     print(f" 🏆 [Asset Locked] Angie's independent seed block asset locked to disk: {file_name}")
     
     # ==============================================================================
-    # 🎯 STAGE 3: DATA RENDERING
+    # 🎯 STAGE 3: DATA RENDERING (INTEGRATED PAIRWISE ANALYSIS)
     # ==============================================================================
     process_and_pairwise_test(file_name, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
