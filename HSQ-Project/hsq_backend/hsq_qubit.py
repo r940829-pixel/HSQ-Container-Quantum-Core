@@ -102,7 +102,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.enforce_gauge_protection()
 
     def compute_current_xi(self):
-        """ 🌟 100% UNTOUCHED ORIGINAL FILAMENT - 完全留存原生波包設計特色 """
+        """ 🌟 100% UNTOUCHED ORIGINAL FILAMENT  """
         t = self.t_accumulated
         x_grid = xp.linspace(-20, 20, 500)
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
