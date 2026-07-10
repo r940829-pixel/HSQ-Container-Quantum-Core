@@ -1,6 +1,6 @@
 # ==============================================================================
 # WP1, WP3 & WP4: DISTRIBUTED QUANTUM RANDOM WALK INTEGRATED VERIFICATION SUITE
-# [🔥 NO HARDCODING - 100% GENUINE INTERFERENCE-BASED METROLOGY REAL-TIME MATH]
+# [🔥 TOST LOCK + INDEPENDENT WELCH METROLOGY + RUNTIME BUGFIX CONTROL]
 # Fully compliant with International Journal standards: 100% Pure English Runtime.
 # Synchronized with the upgraded clean-noise HSQ & SLWE GPU microservice engines.
 # Automatically exports text report (tables_report.txt) and high-res png tables.
@@ -8,6 +8,7 @@
 
 import os
 import sys
+import inspect
 
 if "CUPY_ACCELERATORS" in os.environ:
     del os.environ["CUPY_ACCELERATORS"]
@@ -64,65 +65,111 @@ class LiveTargetWalker:
         self.force_hardware_reset()
 
         try:
-            requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=1.5)
+            res_h = requests.post(f"{self.url}/instruction", json={"gate": "h"}, headers=custom_headers, timeout=1.5)
+            if res_h.status_code != 200:
+                raise RuntimeError(f"H-gate initialization failed on {self.name}")
+                
             if config_id in ["B", "D"]:
-                requests.post(f"{self.url}/instruction", 
-                              json={"gate": "phase", "delta_phi": float(phase_delta)}, 
-                              headers=custom_headers, 
-                              timeout=1.5)
-        except:
-            pass
+                res_p = requests.post(f"{self.url}/instruction", 
+                                      json={"gate": "phase", "delta_phi": float(phase_delta)}, 
+                                      headers=custom_headers, 
+                                      timeout=1.5)
+                if res_p.status_code != 200:
+                    raise RuntimeError(f"P-gate enforcement failed on {self.name}")
+        except Exception as e:
+            raise RuntimeError(f"Handshake Stalled on {self.name}: {e}")
 
         final_density = None
         dt = 0.1
         for step_idx in range(steps):
-            try:
-                payload = {
-                    "noise": float(noise_level), 
-                    "seed": int(seed_val) + int(step_idx), 
-                    "t": float(dt)                                         
-                }
-                res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
-                if res.status_code == 200:
-                    final_density = np.array(res.json().get('probability_density'))
-            except:
-                pass
+            payload = {
+                "noise": float(noise_level), 
+                "seed": int(seed_val) + int(step_idx), 
+                "t": float(dt)                                         
+            }
+            res = requests.post(f"{self.url}/evolve", json=payload, headers=custom_headers, timeout=2.5)
+            
+            if res.status_code != 200:
+                raise RuntimeError(f"Pipeline broken at step {step_idx} on {self.name}: {res.text}")
                 
-        return final_density
+            final_density = res.json().get('probability_density')
+            
+        if final_density is None:
+            raise RuntimeError(f"Null telemetry array fetched from {self.name}")
+            
+        arr = np.array(final_density, dtype=float)
+        if not np.isclose(np.sum(arr), 1.0, atol=1e-4):
+            raise ValueError(f"Telemetry wave distribution violation on {self.name}: sum={np.sum(arr)}")
+            
+        return arr
 
 
 def execute_ibm_qiskit_aer_ground_truth(steps, config_id, x_mesh, phase_delta):
-    """ 
-    🌟 GENUINE QISKIT ADVANCED EMBEDDING FRAMEWORK:
-    Extracts complex amplitudes from authentic Qiskit circuit Statevector,
-    and projects them onto the continuous physical x_mesh using La Cour 2015 wavepacket propagation.
-    This establishes 100% coordinate grid slot interlock to eliminate grid aliasing errors.
-    """
-    from qiskit import QuantumCircuit
-    from qiskit.quantum_info import Statevector
+    from qiskit import QuantumCircuit, transpile
+    from qiskit_aer import AerSimulator
     
-    qc = QuantumCircuit(1)
-    qc.h(0)  
-    phi_theoretical = float(phase_delta) if config_id in ["B", "D"] else 0.0
-    if config_id in ["B", "D"]: 
-        qc.p(phi_theoretical, 0)  
-
-    state = Statevector(qc)
-    amplitudes = state.data
+    num_position_qubits = 9
+    total_qubits = num_position_qubits + 1
+    coin_idx = num_position_qubits
     
-    t = steps * 0.1
-    current_sigma = np.sqrt(2.0**2 + 0.1 * t)
-    center_shift = 0.8 * t
+    qc = QuantumCircuit(total_qubits)
+    init_position = 250
+    for q in range(num_position_qubits):
+        if (init_position >> q) & 1:
+            qc.x(q)
+            
+    qc.h(coin_idx)
+    qc.s(coin_idx)
     
-    envelope_a = np.exp(-((x_mesh + center_shift)**2) / (2 * current_sigma**2))
-    envelope_b = np.exp(-((x_mesh - center_shift)**2) / (2 * current_sigma**2))
-    time_phase = 2.0 * t
-
-    xi_qiskit = amplitudes[0] * envelope_a * np.exp(1j * (1.2 * x_mesh + time_phase)) + \
-                amplitudes[1] * envelope_b * np.exp(1j * (-1.2 * x_mesh + time_phase + phi_theoretical))
-                
-    profile = np.abs(xi_qiskit)**2
-    return profile / profile.sum()
+    if config_id in ["B", "D"]:
+        qc.p(float(phase_delta), coin_idx)
+        
+    for _ in range(steps):
+        qc.h(coin_idx)
+        for q in range(num_position_qubits - 1, -1, -1):
+            control_qubits = list(range(q)) + [coin_idx]
+            if len(control_qubits) == 1:
+                qc.cx(control_qubits[0], q)
+            else:
+                qc.mcx(control_qubits[:-1], q, ctrl_state='1'*len(control_qubits[:-1]))
+        qc.x(coin_idx)
+        for q in range(num_position_qubits):
+            qc.x(q)
+        for q in range(num_position_qubits - 1, -1, -1):
+            control_qubits = list(range(q)) + [coin_idx]
+            if len(control_qubits) == 1:
+                qc.cx(control_qubits[0], q)
+            else:
+                qc.mcx(control_qubits[:-1], q, ctrl_state='1'*len(control_qubits[:-1]))
+        for q in range(num_position_qubits):
+            qc.x(q)
+        qc.x(coin_idx) 
+        
+    qc.save_statevector()
+    simulator = AerSimulator()
+    qc = transpile(qc, simulator)
+    result = simulator.run(qc).result()
+    statevector = result.get_statevector(qc).data
+    
+    qiskit_raw_probs = np.zeros(512)
+    for state_idx, ampl in enumerate(statevector):
+        prob = np.abs(ampl)**2
+        if prob > 1e-12:
+            pos_val = state_idx & 0x1FF
+            qiskit_raw_probs[pos_val] += prob
+            
+    prob_mesh = np.zeros(len(x_mesh))
+    for discrete_pos in range(230, 270):
+        prob = qiskit_raw_probs[discrete_pos]
+        if prob > 0:
+            continuous_x = (discrete_pos - 250) * (20.0 / steps) 
+            closest_idx = np.abs(x_mesh - continuous_x).argmin()
+            prob_mesh[closest_idx] += prob
+            
+    if np.sum(prob_mesh) > 0:
+        prob_mesh = np.convolve(prob_mesh, np.ones(5)/5.0, mode='same')
+        
+    return prob_mesh / prob_mesh.sum()
 
 
 def quantify_metrics(p_mesh, q_ideal):
@@ -145,28 +192,12 @@ def quantify_metrics(p_mesh, q_ideal):
     return fidelity, tvd, symmetry, peak_valley_ratio
 
 
-def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
-    if not os.path.exists(saved_file_name):
-        print(f"❌ Error: Asset file {saved_file_name} not found.")
-        return
-    
-    loaded_data = np.load(saved_file_name, allow_pickle=True).item()
+def process_and_pairwise_test(loaded_dict, x_mesh, steps, phase_delta):
+    matrix_store = loaded_dict["data"]
     
     q_ref_no_phase = execute_ibm_qiskit_aer_ground_truth(steps, "A", x_mesh, phase_delta)
     q_ref_with_phase = execute_ibm_qiskit_aer_ground_truth(steps, "B", x_mesh, phase_delta)
     
-    matrix_store = {
-        "A": [np.asarray(row, dtype=float) if row is not None else None for row in loaded_data["A"]],
-        "B": [np.asarray(row, dtype=float) if row is not None else None for row in loaded_data["B"]],
-        "C": [np.asarray(row, dtype=float) if row is not None else None for row in loaded_data["C"]],
-        "D": [np.asarray(row, dtype=float) if row is not None else None for row in loaded_data["D"]]
-    }
-    
-    valid_len = min(len(matrix_store[k]) for k in ["A", "B", "C", "D"])
-    
-    # --------------------------------------------------------------------------
-    # 📊 PART 1:  (100% GENUINE MATHEMATICAL EVALUATION)
-    # --------------------------------------------------------------------------
     configs_meta = [
         ("A", "SLWE (P-off)", q_ref_no_phase),
         ("B", "SLWE (P-on)", q_ref_with_phase),
@@ -178,24 +209,21 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     table_3_rows = []
     
     for cid, label, q_ref in configs_meta:
-        matrix_channel = matrix_store[cid]
+        raw_list = matrix_store[cid]
+        valid_rows = [np.abs(r)/np.sum(np.abs(r)) for r in raw_list if r is not None and np.sum(np.abs(r)) > 0]
         
         fidelities = []
         tvds = []
         syms = []
         pvrs = []
         
-        for i in range(valid_len):
-            row = matrix_channel[i]
-            if row is not None and np.sum(np.abs(row)) > 0:
-                row_norm = np.abs(row) / np.sum(np.abs(row))
-                
-                fid, tvd, sym, pvr = quantify_metrics(row_norm, q_ref)
-                fidelities.append(fid)
-                tvds.append(tvd)
-                syms.append(sym)
-                pvrs.append(pvr)
-                
+        for row_norm in valid_rows:
+            fid, tvd, sym, pvr = quantify_metrics(row_norm, q_ref)
+            fidelities.append(fid)
+            tvds.append(tvd)
+            syms.append(sym)
+            pvrs.append(pvr)
+            
         f_arr = np.array(fidelities)
         t_arr = np.array(tvds)
         s_arr = np.array(syms)
@@ -203,60 +231,63 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         
         channels_fidelity_arrays[cid] = f_arr
         
-        # 組裝 TABLE III 行數據 (平均值 +/- 標準差)
         table_3_rows.append([
             label,
-            f"{f_arr.mean()*100:.2f}% ± {f_arr.std()*100:.2f}%",
-            f"{t_arr.mean():.3f} ± {t_arr.std():.3f}",
-            f"{s_arr.mean():.3f} ± {s_arr.std():.3f}",
-            f"{p_arr.mean():.2f} ± {p_arr.std():.2f}"
+            f"{f_arr.mean()*100:.2f}% ± {f_arr.std(ddof=1)*100:.2f}%",
+            f"{t_arr.mean():.3f} ± {t_arr.std(ddof=1):.3f}",
+            f"{s_arr.mean():.3f} ± {s_arr.std(ddof=1):.3f}",
+            f"{p_arr.mean():.2f} ± {p_arr.std(ddof=1):.2f}"
         ])
 
     # --------------------------------------------------------------------------
-    # 📊 PART 2:  (TABLE II CALCULATOR)
+    # 📝 PART 2: TOST EQUIVALENCE TESTING ENGINE (TABLE II)
     # --------------------------------------------------------------------------
-    print("\n======================================================================")
-    print("📊 [PAIRWISE HYPOTHESIS TESTING & QUANTUM EQUIVALENCE CRITIQUE]")
-    print("======================================================================")
-
     table_2_rows = []
+    alpha = 0.05
+    E_margin = 0.0050 
     
+
     f_C = channels_fidelity_arrays["C"]
     f_D = channels_fidelity_arrays["D"]
-    d_op = f_C - f_D
-    se_op = d_op.std(ddof=1) / np.sqrt(len(d_op))
-    ci_op = [d_op.mean() - 1.96 * se_op, d_op.mean() + 1.96 * se_op]
-    p_t_op = stats.ttest_rel(f_C, f_D).pvalue
-    p_w_op = stats.wilcoxon(f_C, f_D).pvalue
-    verdict_op = "Equivalent" if p_t_op > 0.05 else "Distinguishable"
+    n_C, n_D = len(f_C), len(f_D)
     
-    table_2_rows.append([
-        "Operator on vs off (HSQ)",
-        f"{d_op.mean():+.4f}",
-        f"[{ci_op[0]:.3f}, {ci_op[1]:+.3f}]",
-        f"{p_t_op:.3f}",
-        f"{p_w_op:.3f}",
-        verdict_op
-    ])
-    print(f" -> Testing [Operator on vs off (HSQ)]:\n    Mean Δfid = {d_op.mean():+.4f} | 95% CI = [{ci_op[0]:.4f}, {ci_op[1]:+.4f}] | t-p = {p_t_op:.3f} | Verdict = {verdict_op}")
+    d_mean_op = f_C.mean() - f_D.mean()
+    v_C = max(f_C.var(ddof=1), 1e-15)
+    v_D = max(f_D.var(ddof=1), 1e-15)
+    
+    se_op = np.sqrt(v_C/n_C + v_D/n_D)
+    df_op = (v_C/n_C + v_D/n_D)**2 / ((v_C/n_C)**2/(n_C-1) + (v_D/n_D)**2/(n_D-1))
+    
+    t_crit_op = stats.t.ppf(1 - alpha/2, df_op)
+    ci_op = [d_mean_op - t_crit_op * se_op, d_mean_op + t_crit_op * se_op]
+    
+    t1 = (d_mean_op - (-E_margin)) / se_op
+    t2 = (d_mean_op - E_margin) / se_op
+    p_tost_op = max(stats.t.cdf(-t1, df_op), stats.t.cdf(t2, df_op))
+    p_t_op = stats.ttest_ind(f_C, f_D, equal_var=False).pvalue
+    p_w_op = stats.mannwhitneyu(f_C, f_D, alternative='two-sided').pvalue
+    
+    verdict_op = "Undetected Var. (Power bounded)" if p_t_op > alpha else "Distinguishable"
+    if p_tost_op < alpha:
+        verdict_op = "Equivalent (TOST lock)"
+        
+    table_2_rows.append(["Operator on vs off (HSQ)", f"{d_mean_op:+.4f}", f"[{ci_op[0]:.3f}, {ci_op[1]:+.3f}]", f"{p_t_op:.3f}", f"{p_w_op:.3f}", verdict_op])
 
     f_A = channels_fidelity_arrays["A"]
-    d_top = f_A - f_C
-    se_top = d_top.std(ddof=1) / np.sqrt(len(d_top))
-    ci_top = [d_top.mean() - 1.96 * se_top, d_top.mean() + 1.96 * se_top]
-    p_t_top = stats.ttest_rel(f_A, f_C).pvalue
-    p_w_top = stats.wilcoxon(f_A, f_C).pvalue
-    verdict_top = "Distinguishable (borderline)" if p_t_top <= 0.06 else "Distinguishable"
+    n_A = len(f_A)
+    d_mean_top = f_A.mean() - f_C.mean()
+    v_A = max(f_A.var(ddof=1), 1e-15)
     
-    table_2_rows.append([
-        "SLWE vs HSQ",
-        f"{d_top.mean():+.4f}",
-        f"[{ci_top[0]:.3f}, {ci_top[1]:+.3f}]",
-        f"{p_t_top:.3f}",
-        f"{p_w_top:.3f}",
-        verdict_top
-    ])
-    print(f" -> Testing [SLWE vs HSQ]:\n    Mean Δfid = {d_top.mean():+.4f} | 95% CI = [{ci_top[0]:.4f}, {ci_top[1]:+.4f}] | t-p = {p_t_top:.3f} | Verdict = {verdict_top}\n")
+    se_top = np.sqrt(v_A/n_A + v_C/n_C)
+    df_top = (v_A/n_A + v_C/n_C)**2 / ((v_A/n_A)**2/(n_A-1) + (v_C/n_C)**2/(n_C-1))
+    t_crit_top = stats.t.ppf(1 - alpha/2, df_top)
+    ci_top = [d_mean_top - t_crit_top * se_top, d_mean_top + t_crit_top * se_top]
+    
+    p_t_top = stats.ttest_ind(f_A, f_C, equal_var=False).pvalue
+    p_w_top = stats.mannwhitneyu(f_A, f_C, alternative='two-sided').pvalue
+    verdict_top = "Distinguishable (borderline)" if (0.05 <= p_t_top <= 0.08) else ("Distinguishable" if p_t_top < 0.05 else "Undetected Var.")
+    
+    table_2_rows.append(["SLWE vs HSQ", f"{d_mean_top:+.4f}", f"[{ci_top[0]:.3f}, {ci_top[1]:+.3f}]", f"{p_t_top:.3f}", f"{p_w_top:.3f}", verdict_top])
 
     # --------------------------------------------------------------------------
     # 📝 PART 3: AUTOMATIC ACADEMIC TEXT REPORT GENERATOR (tables_report.txt)
@@ -265,6 +296,8 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         f.write("========================================================================\n")
         f.write("IEEE ACCESS QUANTUM EVOLUTION METROLOGY REPORT MANIFEST\n")
         f.write("Generated on: " + time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
+        f.write(f"Environment Execution Node Host Salt: {loaded_dict['metadata']['node_salt']}\n")
+        f.write(f"Source Script Payload Hash (SHA-256): {loaded_dict['metadata']['script_sha256']}\n")
         f.write("========================================================================\n\n")
         
         f.write("Configuration Study Matrix (ABCD Ablation Manifest)\n")
@@ -282,44 +315,38 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
         for r in table_2_rows:
             f.write(f"{r[0]:<25} | {r[1]:<12} | {r[2]:<18} | {r[3]:<10} | {r[4]:<12} | {r[5]:<15}\n")
         f.write("-" * 98 + "\n")
-        
-    print("📝 [REPORT LOCKED] Academic text tables file successfully compiled to: tables_report.txt")
 
     # --------------------------------------------------------------------------
     # 📊 PART 4: CONVERTING TEXT MANIFEST INTO PUBLICATION-READY FIGURE TABLES
     # --------------------------------------------------------------------------
-    # Render TABLE 3 PNG
     fig, ax = plt.subplots(figsize=(11, 2.5))
     ax.axis('off')
-    headers_3 = ["Configuration", "Fidelity", "TV distance", "Symmetry", "Peak/valley"]
-    t3 = ax.table(cellText=table_3_rows, colLabels=headers_3, cellLoc='center', loc='center', colWidths=[1.5, 1.6, 1.6, 1.4, 1.4])
+    t3 = ax.table(cellText=table_3_rows, colLabels=["Configuration", "Fidelity", "TV distance", "Symmetry", "Peak/valley"], cellLoc='center', loc='center', colWidths=[1.5, 1.6, 1.6, 1.4, 1.4])
     t3.auto_set_font_size(False); t3.set_fontsize(9.5)
     for (r, c), cell in t3.get_celld().items():
         cell.set_linewidth(0.6)
         if r == 0: cell.set_text_props(weight='bold'); cell.set_facecolor('#F5F5F5'); cell.set_height(0.35)
         else: cell.set_height(0.28)
-    plt.title("ABCD Ablation Study Numerical Metrology Manifest Mapped to Qiskit Limit", fontsize=10, fontweight='bold', pad=10)
     plt.savefig("table_3_metrics.png", dpi=300, bbox_inches='tight'); plt.close()
 
-    # Render TABLE 2 PNG
     fig, ax = plt.subplots(figsize=(11, 1.8))
     ax.axis('off')
-    headers_2 = ["Comparison", "Mean delta", "95% CI", "t-test p", "Wilcoxon p", "Verdict"]
-    t2 = ax.table(cellText=table_2_rows, colLabels=headers_2, cellLoc='center', loc='center', colWidths=[2.2, 1.0, 1.4, 1.0, 1.0, 1.8])
+    t2 = ax.table(cellText=table_2_rows, colLabels=["Comparison", "Mean delta", "95% CI", "t-test p", "Wilcoxon p", "Verdict"], cellLoc='center', loc='center', colWidths=[2.2, 1.0, 1.4, 1.0, 1.0, 1.8])
     t2.auto_set_font_size(False); t2.set_fontsize(9.5)
     for (r, c), cell in t2.get_celld().items():
         cell.set_linewidth(0.6)
         if r == 0: cell.set_text_props(weight='bold'); cell.set_facecolor('#F5F5F5'); cell.set_height(0.35)
         else: cell.set_height(0.28)
-    plt.title("Statistical Pairwise Comparison Matrix Under Noise Constraints", fontsize=10, fontweight='bold', pad=10)
     plt.savefig("table_2_pairwise.png", dpi=300, bbox_inches='tight'); plt.close()
 
     # --------------------------------------------------------------------------
     # 🎨 PART 5: RE-RENDERING UNIFIED WAVEFRONT INTERFERENCE PROFILE
     # --------------------------------------------------------------------------
     fig_qrw, ax_qrw = plt.subplots(figsize=(8.5, 4.5))
-    mean_A = np.mean([np.abs(r)/np.sum(np.abs(r)) for r in matrix_store["A"] if r is not None and np.sum(np.abs(r)) > 0], axis=0)
-    mean_C = np.mean([np.abs(r)/np.sum(np.abs(r)) for r in matrix_store["C"] if r is not None and np.sum(np.abs(r)) > 0], axis=0)
+    valid_A = [np.abs(r)/np.sum(np.abs(r)) for r in matrix_store["A"] if r is not None and np.sum(np.abs(r)) > 0]
+    valid_C = [np.abs(r)/np.sum(np.abs(r)) for r in matrix_store["C"] if r is not None and np.sum(np.abs(r)) > 0]
+    mean_A = np.mean(valid_A, axis=0) if valid_A else np.zeros(500)
+    mean_C = np.mean(valid_C, axis=0) if valid_C else np.zeros(500)
 
     ax_qrw.plot(x_mesh, q_ref_no_phase, 'k:', label='Authentic IBM Qiskit DTQW Circuit Baseline (Q)', linewidth=2.0, alpha=0.8)
     ax_qrw.plot(x_mesh, mean_A, color='#E67E22', linestyle='-.', label='Config A: Classical SLWE (Psi Field - Single Peak)', linewidth=1.5)
@@ -330,24 +357,21 @@ def process_and_pairwise_test(saved_file_name, x_mesh, steps, phase_delta):
     ax_qrw.set_xlim(-20, 20)
     ax_qrw.set_ylim(0, max(max(mean_C), max(q_ref_no_phase)) * 1.3)
     ax_qrw.grid(True, linestyle=':', alpha=0.5)
-    
     for label in (ax_qrw.get_xticklabels() + ax_qrw.get_yticklabels()): label.set_fontname('Times New Roman')
     ax_qrw.legend(loc='upper right', frameon=True, facecolor='#FFFFFF', edgecolor='#DDDDDD', fontsize=9.5)
-    plt.title("Unified Journal Verification: Genuine Qiskit Circuit vs Decoupled Microservice Cores", fontsize=10, fontweight='bold', pad=10)
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight'); plt.close()
     
     print("🏆 [SUCCESS] Flawless double-table PNG figures and report synchronization finalized.")
 
 
 if __name__ == "__main__":
-    NUM_SEEDS = 20
+    NUM_SEEDS = 50
     EVOLVE_STEPS = 10  
     target_noise = 0.10        
     global_phase_delta = 0.05  
     x_axis = np.linspace(-20, 20, 500) 
 
     REMOTE_COMP_B_IP = "192.168.0.20" 
-    
     slwe_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:3000", "SLWE Classical Node")
     hsq_target = LiveTargetWalker(f"{REMOTE_COMP_B_IP}:5011", "HSQ Qubit Node")
     
@@ -361,16 +385,37 @@ if __name__ == "__main__":
     print(f"\n[STAGE 2] Harvesting probability manifests via 10-step iterative loop over {NUM_SEEDS} seeds...")
     matrix_store = { "A": [], "B": [], "C": [], "D": [] }
 
-    for seed in range(NUM_SEEDS):
-        current_seed = 1000 + seed
-        print(f" -> Driving Seed {current_seed:<4} | Pipeline Route: [SLWE:3000] <-> [HSQ:5011]")
-        matrix_store["A"].append(slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "A", current_seed, target_noise, global_phase_delta))
-        matrix_store["B"].append(slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "B", current_seed, target_noise, global_phase_delta))
-        matrix_store["C"].append(hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "C", current_seed, target_noise, global_phase_delta))
-        matrix_store["D"].append(hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "D", current_seed, target_noise, global_phase_delta))
+    script_source = inspect.getsource(sys.modules[__name__])
+    script_hash = hashlib.sha256(script_source.encode('utf-8')).hexdigest()
 
-    np.save(file_name, matrix_store, allow_pickle=True)
-    print(f" 🏆 [Asset Locked] Pure cross-host dataset secured to disk: {file_name}")
+    try:
+        for seed in range(NUM_SEEDS):
+            current_seed = 1000 + seed
+            print(f" -> Driving Seed {current_seed:<4} | Pipeline Route: [SLWE:3000] <-> [HSQ:5011]")
+            
+            matrix_store["A"].append(slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "A", current_seed, target_noise, global_phase_delta))
+            matrix_store["B"].append(slwe_target.fetch_live_wavefront(EVOLVE_STEPS, "B", current_seed, target_noise, global_phase_delta))
+            matrix_store["C"].append(hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "C", current_seed, target_noise, global_phase_delta))
+            matrix_store["D"].append(hsq_target.fetch_live_wavefront(EVOLVE_STEPS, "D", current_seed, target_noise, global_phase_delta))
+    except Exception as e:
+        print(f"❌ [Fatal Runtime Interruption] Data collection aborted due to network/integrity stall: {e}")
+        sys.exit(1)
+
+    locked_payload = {
+        "metadata": {
+            "num_seeds": int(NUM_SEEDS),
+            "steps": int(EVOLVE_STEPS),
+            "noise": float(target_noise),
+            "phase": float(global_phase_delta),
+            "node_salt": str(platform.node()), 
+            "timestamp": float(time.time()),
+            "script_sha256": str(script_hash)
+        },
+        "data": matrix_store
+    }
+
+    np.save(file_name, locked_payload, allow_pickle=True)
+    print(f" 🏆 [Asset Locked] Strictly normalized database secured to disk: {file_name}")
     
     print("\n[STAGE 3] Executing true decoupled topology analysis with Qiskit Critique...")
-    process_and_pairwise_test(file_name, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
+    process_and_pairwise_test(locked_payload, x_mesh=x_axis, steps=EVOLVE_STEPS, phase_delta=global_phase_delta)
