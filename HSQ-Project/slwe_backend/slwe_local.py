@@ -53,7 +53,8 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         self.sigma = 2.0          # Initial classical wave-packet envelope spatial width
         self.alpha = 0.1          # Classical spatiotemporal diffusion mapping exponent
         self.t_accumulated = 0.0  # Continuous tracking of time advancement axis
-
+        self.vg = 0.0
+        
     def reset_to_vacuum(self):
         """ Resets classical signal registers back to structural ground truth state. """
         self.signal_vector = xp.zeros(self.dimension, dtype=complex)
@@ -114,11 +115,10 @@ class HilbertSpaceClassicalSignalSLWEEngine:
     def compute_current_psi(self):
         """ 
         🌟 SCHOLASTIC REFACTOR: Fully aligned with Spreeuw 2001 & La Cour 2015/2016.
-        Extracts the macro intensity envelope of the classical quadrature modulated wavefield (Psi).
-        Solves the high-frequency floating-point variance to purge the Stage 3 Empty Slot lock.
+        Corrects single-step delta t usage to continuous cumulative self.t_accumulated axis.
         """
         x_grid = xp.linspace(-20, 20, 500)
-        t = self.t_accumulated
+        t_real = self.t_accumulated 
         
         if HAS_GPU:
             vec_cpu = cp.asnumpy(self.signal_vector)
@@ -128,16 +128,16 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         a_complex = vec_cpu[0]
         b_complex = vec_cpu[1] if self.dimension > 1 else 0j
 
-        current_sigma = xp.sqrt(self.sigma**2 + self.alpha * t)
+        current_sigma = xp.sqrt(self.sigma**2 + self.alpha * t_real)
         
-        I_field = np.abs(a_complex) * xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
-        Q_field = np.abs(b_complex) * xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
+        I_field = np.abs(a_complex) * xp.exp(-((x_grid + self.vg * t_real)**2) / (2 * current_sigma**2))
+        Q_field = np.abs(b_complex) * xp.exp(-((x_grid - self.vg * t_real)**2) / (2 * current_sigma**2))
         
-        interference_cross = 2 * I_field * Q_field * xp.cos(self.phi + self.k_delta)
+        interference_cross = 2 * I_field * Q_field * np.cos(self.phi + self.k_delta)
         
         prob = (I_field**2) + (Q_field**2) + interference_cross
         
-        prob = xp.clip(prob, 1e-12, None)
+        prob = xp.clip(prob, 1e-8, None)
         
         total_sum = float(xp.sum(prob))
         if total_sum > 0:
@@ -150,7 +150,7 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         return prob.astype(float).tolist()
 
 
-slwe_engine = None
+slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=1)
 
 # ==============================================================================
 # PYDANTIC DATA MODELS
