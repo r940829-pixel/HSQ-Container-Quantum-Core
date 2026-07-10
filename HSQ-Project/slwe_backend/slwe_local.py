@@ -113,9 +113,9 @@ class HilbertSpaceClassicalSignalSLWEEngine:
 
     def compute_current_psi(self):
         """ 
-        🌟 FULLY REPAIRED CLASSICAL OPTICAL/SIGNAL EMULATION (La Cour 2015)
-        Restores physical delay-line splitting (the "walk") and dispersive noise 
-        to fix uniform flattening and nan p-values, while remaining 100% classical (Real Cosines).
+        🌟 SCHOLASTIC REFACTOR: Fully aligned with Spreeuw 2001 & La Cour 2015/2016.
+        Extracts the macro intensity envelope of the classical quadrature modulated wavefield (Psi).
+        Solves the high-frequency floating-point variance to purge the Stage 3 Empty Slot lock.
         """
         x_grid = xp.linspace(-20, 20, 500)
         t = self.t_accumulated
@@ -127,21 +127,17 @@ class HilbertSpaceClassicalSignalSLWEEngine:
             
         a_complex = vec_cpu[0]
         b_complex = vec_cpu[1] if self.dimension > 1 else 0j
-        
+
         current_sigma = xp.sqrt(self.sigma**2 + self.alpha * t)
         
-        envelope_InPhase = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
-        envelope_Quadrature = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
+        I_field = np.abs(a_complex) * xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
+        Q_field = np.abs(b_complex) * xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
         
-        k_noisy = self.k_carrier + self.k_delta
+        interference_cross = 2 * I_field * Q_field * xp.cos(self.phi + self.k_delta)
         
-        phase_InPhase = k_noisy * x_grid - (self.omega_carrier * t) + np.angle(a_complex)
-        phase_Quadrature = k_noisy * x_grid - (self.omega_carrier * t) + self.phi + np.angle(b_complex)
+        prob = (I_field**2) + (Q_field**2) + interference_cross
         
-        psi_classical = np.abs(a_complex) * envelope_InPhase * xp.cos(phase_InPhase) + \
-                        np.abs(b_complex) * envelope_Quadrature * xp.cos(phase_Quadrature)
-        
-        prob = psi_classical ** 2
+        prob = xp.clip(prob, 1e-12, None)
         
         total_sum = float(xp.sum(prob))
         if total_sum > 0:
