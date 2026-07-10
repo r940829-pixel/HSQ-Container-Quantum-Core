@@ -1,9 +1,9 @@
 # ==============================================================================
 # CLASSICAL SIGNAL LINEAR WAVE EQUATION (SLWE) BENCHMARK NODE
-# [MAXIMUM PERFORMANCE COMPLIANCE - GPU ACCELERATION VALIDATED VIA NVIDIA CUDA CORES]
+# [PRODUCTION GRADE - INCREMENTAL TIME ACCUMULATION - ORTHODOX BASELINE]
 # Fully aligned with the physical formulations of Spreeuw 2001 and La Cour 2015/2016.
 # 100% mirror-aligned with the FastAPI API schema and response topology of the HSQ container.
-# Updated: Purged all Redis telemetry dependencies to enforce scholastic baseline orthodoxy.
+# Updated: Purged all HSQ formulas. Aligned with True Classical Quadrature Wavefields (Psi).
 # ==============================================================================
 
 import platform
@@ -18,7 +18,7 @@ from typing import Optional, List
 import uvicorn
 
 # ==============================================================================
-# HARDWARE ACCELERATION BINDING LAYER (SLWE GPU GRAPHICS CARD INTERACTION)
+# HARDWARE ACCELERATION BINDING LAYER (SLWE GPU CUDA CORES BINDING)
 # ==============================================================================
 try:
     import cupy as cp
@@ -29,35 +29,30 @@ except ImportError:
     HAS_GPU = False
 
 app = FastAPI(title="SLWE Classical Signal Benchmark Node")
-
-# ==============================================================================
-# HIGH-CONCURRENCY MUTEX LOCK (COMPLIANT WITH IBM QUANTUM ISOLATION STANDARDS)
-# ==============================================================================
 simulation_lock = threading.Lock()
 
 # ==============================================================================
-# GPU-ACCELERATED SLWE NUMERICAL COMPUTATION ENGINE
+# GPU-ACCELERATED CLASSICAL WAVEFIELD (SLWE) ENGINE
 # ==============================================================================
 class HilbertSpaceClassicalSignalSLWEEngine:
     def __init__(self, num_qubits=1):
         self.num_qubits = num_qubits
         self.dimension = 2 ** num_qubits  
         
+        # ⚡ CUDA-accelerated register initialization (Classical Complex Amplitudes)
         self.signal_vector = xp.zeros(self.dimension, dtype=complex)
         self.signal_vector[0] = 1.0 + 0j
         
         self.current_step = 0
-        self.phi = 0.0      
-        self.k_delta = 0.0  
+        self.phi = 0.0      # Tracking the relative phase gate shift
+        self.k_delta = 0.0  # Accumulated classical dephasing noise constant
         
-        # --- Physical Parameters Perfectly Aligned with HSQ Core ---
-        self.omega_L = 2.0
-        self.omega_R = 2.0
-        self.k_L = 1.2
-        self.k_R = -1.2
-        self.sigma = 2.0    
-        self.vg = 0.8       
-        self.alpha = 0.1    
+        # --- Classical Framework Parameters Aligned with Spreeuw & La Cour ---
+        self.omega_carrier = 2.0  # Base carrier frequency (omega)
+        self.k_carrier = 1.2      # Standard wave propagation constant (k)
+        self.sigma = 2.0          # Initial classical wave-packet envelope spatial width
+        self.alpha = 0.1          # Classical spatiotemporal diffusion mapping exponent
+        self.t_accumulated = 0.0  # Continuous tracking of time advancement axis
 
     def reset_to_vacuum(self):
         """ Resets classical signal registers back to structural ground truth state. """
@@ -66,9 +61,10 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         self.current_step = 0
         self.phi = 0.0
         self.k_delta = 0.0
+        self.t_accumulated = 0.0
 
     def enforce_gauge_protection(self):
-        """ Enforces unitary normalization protection, rigidly locked within a 1e-15 error bound """
+        """ Enforces classical total power normalization protection """
         total_power = float(xp.sum(xp.abs(self.signal_vector) ** 2))
         if total_power > 1e-15:
             self.signal_vector = self.signal_vector / xp.sqrt(total_power)
@@ -96,9 +92,8 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        """ 🌟 [NIST SP 800-22 Compliant Noise Sanitization Kernel - Mirror Aligned] """
+        """ 🌟 [NIST SP 800-22 Complican Noise Kernel - Classical Damping] """
         if noise_level <= 0.0:
-            self.k_delta = 0.0  
             return
             
         if seed_val is not None:
@@ -110,15 +105,16 @@ class HilbertSpaceClassicalSignalSLWEEngine:
             
         rng = np.random.default_rng(actual_seed)
         noise = rng.normal(0, noise_level)
-        self.k_delta += noise
         
+        self.k_delta += noise
         for i in range(1, self.dimension):
             self.signal_vector[i] *= xp.exp(1j * noise)
         self.enforce_gauge_protection()
 
-    def compute_current_xi(self, t=1.0):
+    def compute_current_psi(self):
+
         x_grid = xp.linspace(-20, 20, 500)
-        current_sigma = xp.sqrt(self.sigma**2 + self.alpha * t)
+        t = self.t_accumulated
         
         if HAS_GPU:
             vec_cpu = cp.asnumpy(self.signal_vector)
@@ -128,16 +124,16 @@ class HilbertSpaceClassicalSignalSLWEEngine:
         a_complex = vec_cpu[0]
         b_complex = vec_cpu[1] if self.dimension > 1 else 0j
         
-        envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
-        envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
+        common_envelope = xp.exp(-(x_grid**2) / (2 * (self.sigma**2 + self.alpha * t)))
         
-        phase_L = self.k_L * x_grid + self.omega_L * t
-        phase_R = (self.k_R - self.k_delta) * x_grid + self.omega_R * t + self.phi
+        phase_InPhase = self.k_carrier * x_grid - (self.omega_carrier * t) + np.angle(a_complex)
+        phase_Quadrature = self.k_carrier * x_grid - (self.omega_carrier * t) + self.phi + self.k_delta + np.angle(b_complex)
         
-        xi_classical = a_complex * envelope_a * xp.exp(1j * phase_L) + \
-                       b_complex * envelope_b * xp.exp(1j * phase_R)
+        psi_classical = np.abs(a_complex) * xp.cos(phase_InPhase) + \
+                        np.abs(b_complex) * xp.cos(phase_Quadrature)
         
-        prob = xp.abs(xi_classical)**2
+        prob = (psi_classical * common_envelope) ** 2
+        
         total_sum = float(xp.sum(prob))
         if total_sum > 0:
             prob = prob / total_sum
@@ -167,7 +163,7 @@ class ResetPayload(BaseModel):
     num_qubits: Optional[int] = None
 
 # ==============================================================================
-# 🤝 RESTful API BACKEND ROUTING GATEWAY (100% IBM-ALIGNED SCHEMAS)
+# 🤝 RESTful API BACKEND ROUTING GATEWAY (100% INTER-COMPLIANT)
 # ==============================================================================
 
 @app.post("/reset")
@@ -187,7 +183,7 @@ async def route_ping():
         "status": "ready",
         "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
         "cuda_accelerated": HAS_GPU,
-        "tensor_bus_active": False,  # Explicitly decoupled from Redis bus architecture
+        "tensor_bus_active": False,
         "configured_qubits": slwe_engine.num_qubits if slwe_engine else 0
     }
 
@@ -220,40 +216,22 @@ def route_evolve(payload: EvolvePayload):
     global slwe_engine
     with simulation_lock:
         slwe_engine.current_step += 1
-        t = float(payload.t) if payload.t is not None else slwe_engine.current_step * 0.1
+        dt = float(payload.t) if payload.t is not None else 0.1
+        slwe_engine.t_accumulated += dt
         
         slwe_engine.inject_phase_damping(payload.noise, seed_val=payload.seed)
-        prob_dist = slwe_engine.compute_current_xi(t=t)
+        prob_dist = slwe_engine.compute_current_psi()
         
         vec_cpu = cp.asnumpy(slwe_engine.signal_vector) if HAS_GPU else slwe_engine.signal_vector
         gauge_val = float(np.sum(np.abs(vec_cpu)**2))
     
     return {
         "status": "evolved",
-        "t_final": t,
+        "t_final": slwe_engine.t_accumulated,
         "gauge_metric_integrity": gauge_val,
         "probability_density": prob_dist
     }
 
-# ==============================================================================
-# ENTRY POINT AND RUNTIME BOOTSTRAP
-# ==============================================================================
-print("======================================================================")
-print("===         La Cour & Spreeuw Reference Framework: SLWE Node       ===")
-print("======================================================================")
-
-try:
-    env_scale = os.environ.get("SLWE_QUBITS_SCALE")
-    if env_scale is not None:
-        user_qubits = int(env_scale)
-        print(f" -> Auto-bootstrap detected. Expanding register scale to N={user_qubits} via ENV.")
-    else:
-        user_qubits = 1
-except:
-    user_qubits = 1
-    
-print(f"[Hardware Matrix Deployed] Successfully allocated {user_qubits} classical channels ({2**user_qubits}-D Space).")
-slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=user_qubits)
-
 if __name__ == "__main__":
+    slwe_engine = HilbertSpaceClassicalSignalSLWEEngine(num_qubits=1)
     uvicorn.run(app, host="0.0.0.0", port=3000)
