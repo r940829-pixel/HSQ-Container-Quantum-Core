@@ -88,7 +88,7 @@ class LiveTargetWalker:
         return final_density
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta):
-        """ 同步微調對手 HSQ 節點的驅動配置 """
+
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         self.force_hardware_reset(grid_size=512)
 
