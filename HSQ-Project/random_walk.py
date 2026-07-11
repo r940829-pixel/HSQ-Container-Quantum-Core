@@ -39,8 +39,12 @@ class LiveTargetWalker:
         try: requests.post(f"{self.url}/reset", json={"grid_size": int(grid_size)}, timeout=1.0)
         except: pass
 
+
+# ==============================================================================
+
     def drive_la_cour_analog_rf_circuit(self, steps, config_id, seed_val, noise_level, phase_delta):
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
+        
         self.force_hardware_reset(grid_size=512)
 
         init_iq_payload = {
@@ -71,17 +75,20 @@ class LiveTargetWalker:
             try:
                 analog_evolution_payload = {
                     "thermal_noise_v_rms": float(noise_level), 
-                    "stochastic_seed": int(seed_val) + int(step_idx), 
+                    "stochastic_seed": int(seed_val), 
                     "integration_time_delta_t": 0.1
                 }
                 res = requests.post(f"{self.url}/evolve", json=analog_evolution_payload, headers=custom_headers, timeout=1.5)
                 if res.status_code != 200: return None 
+                
                 final_density = np.array(res.json().get('probability_density'))
             except:
                 return None
+                
         return final_density
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta):
+        """ 同步微調對手 HSQ 節點的驅動配置 """
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         self.force_hardware_reset(grid_size=512)
 
@@ -100,7 +107,7 @@ class LiveTargetWalker:
             try:
                 payload = {
                     "noise": float(noise_level), 
-                    "seed": int(seed_val) + int(step_idx), 
+                    "seed": int(seed_val), 
                     "t": 0.1,
                     "grid_size": 512 
                 }
