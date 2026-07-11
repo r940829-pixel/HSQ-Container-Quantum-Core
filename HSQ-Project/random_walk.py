@@ -40,13 +40,13 @@ class LiveTargetWalker:
         except: pass
 
 
-# ==============================================================================
+
 
     def drive_la_cour_analog_rf_circuit(self, steps, config_id, seed_val, noise_level, phase_delta):
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
-        
         self.force_hardware_reset(grid_size=512)
 
+        
         init_iq_payload = {
             "circuit_mode": "analog_carrier_injection",
             "injection_voltage_v_i": 1.0, 
@@ -59,6 +59,7 @@ class LiveTargetWalker:
             r_inject = requests.post(f"{self.url}/instruction", json=init_iq_payload, headers=custom_headers, timeout=1.0)
             if r_inject.status_code != 200: return None
             
+           
             rf_gate_network = {
                 "circuit_mode": "configure_analog_mixer_network",
                 "attenuation_coefficient_db": 3.0, 
@@ -73,6 +74,7 @@ class LiveTargetWalker:
         final_density = None
         for step_idx in range(steps):
             try:
+                
                 analog_evolution_payload = {
                     "thermal_noise_v_rms": float(noise_level), 
                     "stochastic_seed": int(seed_val), 
@@ -81,14 +83,25 @@ class LiveTargetWalker:
                 res = requests.post(f"{self.url}/evolve", json=analog_evolution_payload, headers=custom_headers, timeout=1.5)
                 if res.status_code != 200: return None 
                 
-                final_density = np.array(res.json().get('probability_density'))
+                
+                psi_R = np.array(res.json().get('psi_real'))
+                psi_I = np.array(res.json().get('psi_imag'))
+                
+                
+                # psi^2 = (psi_R + i*psi_I)^2 = (psi_R^2 - psi_I^2) + i*(2 * psi_R * psi_I)
+                psi_squared_real = (psi_R**2) - (psi_I**2) 
+                psi_squared_imag = 2.0 * psi_R * psi_I
+                
+                
+                final_density = np.sqrt(psi_squared_real**2 + psi_squared_imag**2)
             except:
                 return None
                 
+        if final_density is not None and final_density.sum() > 1e-12:
+            final_density = final_density / final_density.sum()
         return final_density
 
     def fetch_live_wavefront(self, steps, config_id, seed_val, noise_level, phase_delta):
-
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         self.force_hardware_reset(grid_size=512)
 
