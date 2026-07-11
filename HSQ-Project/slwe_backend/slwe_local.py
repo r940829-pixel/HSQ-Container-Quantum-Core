@@ -54,7 +54,7 @@ def hardware_reset():
         mempool.free_all_blocks()
         
     core_mode = "NVIDIA CUDA GPU ACTIVE" if HAS_GPU else "CPU NATIVE MODE"
-    print(f"🧹 [RF BACKEND RESET] 電路重置。規模: {GRID_SIZE} Channels | 核心通道: [{core_mode}]")
+    print(f"🧹 [RF BACKEND RESET] 。size: {GRID_SIZE} Channels | point channal: [{core_mode}]")
     
     return jsonify({
         "status": "Analog Circuit Discharged & Reset", 
