@@ -97,16 +97,15 @@ def analog_gate_network():
 def analog_space_evolution():
     """ 
     🌊 
-
     """
     global V_I, V_Q, GRID_SIZE, t_accumulated, noise_accumulated
     payload = request.get_json()
     
+
     noise_v = float(payload.get("thermal_noise_v_rms", 0.05))
     seed = int(payload.get("stochastic_seed", 1000))
     dt = float(payload.get("integration_time_delta_t", 0.1))
     
-
     t_accumulated += dt
 
     if HAS_GPU:
@@ -115,33 +114,33 @@ def analog_space_evolution():
     else:
         np.random.seed(seed)
         step_noise = float(np.random.normal(0, noise_v * np.sqrt(dt)))
+        
     noise_accumulated += step_noise
 
     x_grid = xp.linspace(-20, 20, GRID_SIZE, dtype=np.float64)
     
 
-    phase_L_macro = (K_L - noise_accumulated) * x_grid * V_G * t_accumulated
-    phase_R_macro = (K_R - noise_accumulated) * x_grid * V_G * t_accumulated
-    
-
-    psi_R_macro = V_I * xp.cos(phase_L_macro) - V_Q * xp.sin(phase_R_macro)
-    psi_I_macro = V_I * xp.sin(phase_L_macro) + V_Q * xp.cos(phase_R_macro)
-
-
     integration_samples = 100
-    t_prime = xp.linspace(0, CARRIER_PERIOD_T, integration_samples, dtype=np.float64)
+    t_prime = xp.linspace(t_accumulated - CARRIER_PERIOD_T, t_accumulated, integration_samples, dtype=np.float64)
     dt_prime = CARRIER_PERIOD_T / float(integration_samples)
 
     accumulated_I = xp.zeros(GRID_SIZE, dtype=np.float64)
     accumulated_Q = xp.zeros(GRID_SIZE, dtype=np.float64)
 
+
+    phase_L_macro = (K_L - noise_accumulated) * x_grid * V_G * t_accumulated
+    phase_R_macro = (K_R - noise_accumulated) * x_grid * V_G * t_accumulated
+
+
     for tp in t_prime:
-        # s(t') = psi_R * cos(w_c*t') - psi_I * sin(w_c*t')
-        s_t_prime = psi_R_macro * xp.cos(OMEGA_C * tp) - psi_I_macro * xp.sin(OMEGA_C * tp)
+
+        # s(t') = psi_R * cos(w_c * t' + phi_L) - psi_I * sin(w_c * t' + phi_R)
+        s_t_prime = V_I * xp.cos(OMEGA_C * tp + phase_L_macro) - V_Q * xp.sin(OMEGA_C * tp + phase_R_macro)
         
-        
+
         accumulated_I += (2.0 * xp.cos(OMEGA_C * tp) * s_t_prime) * dt_prime
         accumulated_Q += (-2.0 * xp.sin(OMEGA_C * tp) * s_t_prime) * dt_prime
+
 
     noise_floor = 1e-12
     if HAS_GPU:
@@ -151,9 +150,10 @@ def analog_space_evolution():
         v_floor_I = np.random.normal(0, noise_floor, GRID_SIZE)
         v_floor_Q = np.random.normal(0, noise_floor, GRID_SIZE)
 
-    
+
     V_I = (accumulated_I / CARRIER_PERIOD_T) + v_floor_I
     V_Q = (accumulated_Q / CARRIER_PERIOD_T) + v_floor_Q
+
 
     power_density = (V_I**2 + V_Q**2)
     total_power = power_density.sum()
