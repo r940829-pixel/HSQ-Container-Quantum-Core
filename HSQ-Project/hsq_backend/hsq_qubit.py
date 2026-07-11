@@ -1,8 +1,8 @@
 # ==============================================================================
 # HILBERT-SPACE SPINOR QUASIPARTICLE (HSQ) COMPUTATIONAL MICROSERVICE
-# [PRODUCTION GRADE - INCREMENTAL TIME ACCUMULATION - NIST COMPLIANT]
+# [PRODUCTION GRADE - INCREMENTAL TIME ACCUMULATION - VERSION 4.5]
 # Fully optimized to restore multi-step decoherence without altering native xi.
-# Aligns with IBM Qiskit Statevector API standards and NIST SP 800-22 constraints.
+# Aligns with IBM Qiskit Statevector API standards with dynamic field grid sampling.
 # ==============================================================================
 
 import platform
@@ -83,7 +83,7 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        """ 🌟 NIST SP 800-22 COMPLIANT CRYPTOGRAPHIC SEED EXTRACTOR """
+        """ 🌟 CRYPTOGRAPHIC ENTROPY SEED EXTRACTOR """
         if noise_level <= 0.0:
             return
             
@@ -101,10 +101,12 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.b = self.b * np.exp(1j * noise)
         self.enforce_gauge_protection()
 
-    def compute_current_xi(self):
-        """ 🌟 100% UNTOUCHED ORIGINAL FILAMENT  """
+    def compute_current_xi(self, grid_size: int = 500):
+
         t = self.t_accumulated
-        x_grid = xp.linspace(-20, 20, 500)
+
+        x_grid = xp.linspace(-20, 20, grid_size)
+        
         current_sigma = np.sqrt(self.sigma**2 + self.alpha * t)
         envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
@@ -134,6 +136,7 @@ class EvolvePayload(BaseModel):
     noise: float = 0.0
     seed: Optional[int] = None
     t: Optional[float] = None
+    grid_size: Optional[int] = 500  
 
 @app.post("/instruction")
 def route_instruction(payload: InstructionPayload):
@@ -224,14 +227,18 @@ def route_evolve(payload: EvolvePayload):
         dt = float(payload.t) if payload.t is not None else 0.1
         hsq_qubit.t_accumulated += dt
         
+
+        active_grid = payload.grid_size if payload.grid_size and payload.grid_size > 0 else 500
+        
         hsq_qubit.inject_phase_damping(payload.noise, seed_val=payload.seed)
-        prob_dist = hsq_qubit.compute_current_xi()
+        prob_dist = hsq_qubit.compute_current_xi(grid_size=active_grid)
         integrity = float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2)
     return {
         "status": "evolved",
         "t_final": hsq_qubit.t_accumulated,
         "gauge_metric_integrity": integrity,
-        "probability_density": prob_dist
+        "probability_density": prob_dist,
+        "active_hilbert_grid_samples": active_grid  
     }
 
 @app.get("/ping")
