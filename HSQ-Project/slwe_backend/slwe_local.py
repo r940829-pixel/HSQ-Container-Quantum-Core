@@ -19,7 +19,7 @@ GRID_SIZE = DEFAULT_GRID_SIZE
 V_I = xp.zeros(GRID_SIZE, dtype=np.float64)
 V_Q = xp.zeros(GRID_SIZE, dtype=np.float64)
 
-# 🌊  
+# 🌊 
 OMEGA_C = 2.0  
 K_L = 1.2      
 K_R = -1.2     
@@ -51,23 +51,16 @@ def hardware_reset():
     if HAS_GPU:
         mempool.free_all_blocks()
         
-    core_mode = "NVIDIA CUDA GPU ACTIVE" if HAS_GPU else "CPU NATIVE MODE"
-    print(f"🧹 [RF BACKEND RESET] True Central Alignment Enabled. Center Channel: {GRID_SIZE // 2}")
-    
+    print(f"🧹 [RF BACKEND RESET] Grid Scaled to 512 | Central Anchor: {GRID_SIZE // 2}")
     return jsonify({
         "status": "Analog Circuit Discharged & Reset", 
-        "current_configured_grid": GRID_SIZE,
-        "hardware_engine": core_mode
+        "current_configured_grid": GRID_SIZE
     }), 200
 
 @app.route('/ping', methods=['GET'])
 def handshake():
     global GRID_SIZE
-    return jsonify({
-        "status": "ready",
-        "cuda_accelerated": HAS_GPU,
-        "active_grid_channels": GRID_SIZE 
-    }), 200
+    return jsonify({"status": "ready", "active_grid_channels": GRID_SIZE}), 200
 
 @app.route('/instruction', methods=['POST'])
 def analog_gate_network():
@@ -89,7 +82,6 @@ def analog_gate_network():
     elif mode == "configure_analog_mixer_network":
         att_db = float(payload.get("attenuation_coefficient_db", 3.0))
         lo_phase = float(payload.get("local_oscillator_phase_shift", 0.0))
-        
         factor = 10 ** (-att_db / 20.0)
         
         new_V_I = factor * (V_I * xp.cos(lo_phase) - V_Q * xp.sin(lo_phase))
@@ -103,9 +95,6 @@ def analog_gate_network():
 
 @app.route('/evolve', methods=['POST'])
 def analog_space_evolution():
-    """ 
-    s(t) = psi_R(t)cos(w_c*t) - psi_I(t)sin(w_c*t) 1:1 Exact Alignment
-    """
     global V_I, V_Q, GRID_SIZE, t_accumulated, noise_accumulated
     payload = request.get_json()
     
@@ -121,7 +110,6 @@ def analog_space_evolution():
     else:
         np.random.seed(seed)
         step_noise = float(np.random.normal(0, noise_v * np.sqrt(dt)))
-        
     noise_accumulated += step_noise
 
     x_grid = xp.linspace(-20, 20, GRID_SIZE, dtype=np.float64)
@@ -134,13 +122,16 @@ def analog_space_evolution():
     accumulated_Q = xp.zeros(GRID_SIZE, dtype=np.float64)
 
     for tp in t_prime:
+        
         phase_L_dynamic = (K_L - noise_accumulated) * x_grid * V_G * tp
         phase_R_dynamic = (K_R - noise_accumulated) * x_grid * V_G * tp
         
-        # 2. 🌟s(t') = psi_R * cos(W_c*t' + phi_L) - psi_I * sin(W_c*t' + phi_R)
-        s_t_prime = V_I * xp.cos(phase_L_dynamic + OMEGA_C * tp) - V_Q * xp.sin(phase_R_dynamic + OMEGA_C * tp)
+        psi_R_t_prime = V_I * xp.cos(phase_L_dynamic) - V_Q * xp.sin(phase_R_dynamic)
+        psi_I_t_prime = V_I * xp.sin(phase_L_dynamic) + V_Q * xp.cos(phase_R_dynamic)
         
-        # 3. 🌟 psi_R = ∫ 2*cos*s dt' | psi_I = ∫ -2*sin*s dt'
+        # 3. s(t') = psi_R(t')*cos(w_c*t') - psi_I(t')*sin(w_c*t')
+        s_t_prime = psi_R_t_prime * xp.cos(OMEGA_C * tp) - psi_I_t_prime * xp.sin(OMEGA_C * tp)
+        
         accumulated_I += (2.0 * xp.cos(OMEGA_C * tp) * s_t_prime) * dt_prime
         accumulated_Q += (-2.0 * xp.sin(OMEGA_C * tp) * s_t_prime) * dt_prime
 
