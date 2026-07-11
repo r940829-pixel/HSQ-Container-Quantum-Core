@@ -1,5 +1,5 @@
 # ==============================================================================
-# WP1, WP3 & WP4: HIGH-FIDELITY PARADIGM ABLATION SUITE (512-GRID RIGOROUS CENTER)
+# WP1, WP3 & WP4: HIGH-FIDELITY PARADIGM ABLATION SUITE (FDM CHANNEL ALIGNED)
 # [🔥 PRODUCTION LEVEL - COMPLIANT WITH ALL REVIEWER CRITIQUES - ABSOLUTE CENTER]
 # ==============================================================================
 
@@ -39,14 +39,10 @@ class LiveTargetWalker:
         try: requests.post(f"{self.url}/reset", json={"grid_size": int(grid_size)}, timeout=1.0)
         except: pass
 
-
-
-
     def drive_la_cour_analog_rf_circuit(self, steps, config_id, seed_val, noise_level, phase_delta):
         custom_headers = {"Connection": "close", "Content-Type": "application/json"}
         self.force_hardware_reset(grid_size=512)
 
-        
         init_iq_payload = {
             "circuit_mode": "analog_carrier_injection",
             "injection_voltage_v_i": 1.0, 
@@ -59,7 +55,6 @@ class LiveTargetWalker:
             r_inject = requests.post(f"{self.url}/instruction", json=init_iq_payload, headers=custom_headers, timeout=1.0)
             if r_inject.status_code != 200: return None
             
-           
             rf_gate_network = {
                 "circuit_mode": "configure_analog_mixer_network",
                 "attenuation_coefficient_db": 3.0, 
@@ -77,7 +72,7 @@ class LiveTargetWalker:
                 
                 analog_evolution_payload = {
                     "thermal_noise_v_rms": float(noise_level), 
-                    "stochastic_seed": int(seed_val), 
+                    "stochastic_seed": int(seed_val) + int(step_idx), 
                     "integration_time_delta_t": 0.1
                 }
                 res = requests.post(f"{self.url}/evolve", json=analog_evolution_payload, headers=custom_headers, timeout=1.5)
@@ -88,11 +83,8 @@ class LiveTargetWalker:
                 psi_I = np.array(res.json().get('psi_imag'))
                 
                 
-                # psi^2 = (psi_R + i*psi_I)^2 = (psi_R^2 - psi_I^2) + i*(2 * psi_R * psi_I)
                 psi_squared_real = (psi_R**2) - (psi_I**2) 
                 psi_squared_imag = 2.0 * psi_R * psi_I
-                
-                
                 final_density = np.sqrt(psi_squared_real**2 + psi_squared_imag**2)
             except:
                 return None
@@ -120,7 +112,7 @@ class LiveTargetWalker:
             try:
                 payload = {
                     "noise": float(noise_level), 
-                    "seed": int(seed_val), 
+                    "seed": int(seed_val) + int(step_idx), 
                     "t": 0.1,
                     "grid_size": 512 
                 }
@@ -141,7 +133,7 @@ def execute_ibm_qiskit_aer_ground_truth(steps, config_id, discrete_lattice, phas
     coin_idx = num_position_qubits
     
     qc = QuantumCircuit(total_qubits)
-    init_position = 256
+    init_position = 256 
     for q in range(num_position_qubits):
         if (init_position >> q) & 1: qc.x(q)
             
@@ -198,8 +190,6 @@ def quantify_metrics(p_mesh, q_ideal):
 
 
 def align_physical_lattice_via_interpolation(raw_density, discrete_lattice):
-    """
-    """
     if raw_density is None or np.sum(raw_density) == 0:
         return np.zeros(len(discrete_lattice))
         
