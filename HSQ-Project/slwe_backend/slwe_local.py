@@ -95,6 +95,10 @@ def analog_gate_network():
 
 @app.route('/evolve', methods=['POST'])
 def analog_space_evolution():
+    """ 
+    🌊 
+
+    """
     global V_I, V_Q, GRID_SIZE, t_accumulated, noise_accumulated
     payload = request.get_json()
     
@@ -102,6 +106,7 @@ def analog_space_evolution():
     seed = int(payload.get("stochastic_seed", 1000))
     dt = float(payload.get("integration_time_delta_t", 0.1))
     
+
     t_accumulated += dt
 
     if HAS_GPU:
@@ -114,23 +119,26 @@ def analog_space_evolution():
 
     x_grid = xp.linspace(-20, 20, GRID_SIZE, dtype=np.float64)
     
+
+    phase_L_macro = (K_L - noise_accumulated) * x_grid * V_G * t_accumulated
+    phase_R_macro = (K_R - noise_accumulated) * x_grid * V_G * t_accumulated
+    
+
+    psi_R_macro = V_I * xp.cos(phase_L_macro) - V_Q * xp.sin(phase_R_macro)
+    psi_I_macro = V_I * xp.sin(phase_L_macro) + V_Q * xp.cos(phase_R_macro)
+
+
     integration_samples = 100
-    t_prime = xp.linspace(t_accumulated - CARRIER_PERIOD_T, t_accumulated, integration_samples, dtype=np.float64)
+    t_prime = xp.linspace(0, CARRIER_PERIOD_T, integration_samples, dtype=np.float64)
     dt_prime = CARRIER_PERIOD_T / float(integration_samples)
 
     accumulated_I = xp.zeros(GRID_SIZE, dtype=np.float64)
     accumulated_Q = xp.zeros(GRID_SIZE, dtype=np.float64)
 
     for tp in t_prime:
+        # s(t') = psi_R * cos(w_c*t') - psi_I * sin(w_c*t')
+        s_t_prime = psi_R_macro * xp.cos(OMEGA_C * tp) - psi_I_macro * xp.sin(OMEGA_C * tp)
         
-        phase_L_dynamic = (K_L - noise_accumulated) * x_grid * V_G * tp
-        phase_R_dynamic = (K_R - noise_accumulated) * x_grid * V_G * tp
-        
-        psi_R_t_prime = V_I * xp.cos(phase_L_dynamic) - V_Q * xp.sin(phase_R_dynamic)
-        psi_I_t_prime = V_I * xp.sin(phase_L_dynamic) + V_Q * xp.cos(phase_R_dynamic)
-        
-        # 3. s(t') = psi_R(t')*cos(w_c*t') - psi_I(t')*sin(w_c*t')
-        s_t_prime = psi_R_t_prime * xp.cos(OMEGA_C * tp) - psi_I_t_prime * xp.sin(OMEGA_C * tp)
         
         accumulated_I += (2.0 * xp.cos(OMEGA_C * tp) * s_t_prime) * dt_prime
         accumulated_Q += (-2.0 * xp.sin(OMEGA_C * tp) * s_t_prime) * dt_prime
@@ -143,6 +151,7 @@ def analog_space_evolution():
         v_floor_I = np.random.normal(0, noise_floor, GRID_SIZE)
         v_floor_Q = np.random.normal(0, noise_floor, GRID_SIZE)
 
+    
     V_I = (accumulated_I / CARRIER_PERIOD_T) + v_floor_I
     V_Q = (accumulated_Q / CARRIER_PERIOD_T) + v_floor_Q
 
