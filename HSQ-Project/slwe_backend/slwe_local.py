@@ -117,6 +117,7 @@ def analog_space_evolution():
         
     noise_accumulated += step_noise
 
+
     x_grid = xp.linspace(-20, 20, GRID_SIZE, dtype=np.float64)
     
 
@@ -133,9 +134,13 @@ def analog_space_evolution():
 
 
     for tp in t_prime:
+        
 
-        # s(t') = psi_R * cos(w_c * t' + phi_L) - psi_I * sin(w_c * t' + phi_R)
-        s_t_prime = V_I * xp.cos(OMEGA_C * tp + phase_L_macro) - V_Q * xp.sin(OMEGA_C * tp + phase_R_macro)
+        total_phase_L = OMEGA_C * tp + phase_L_macro
+        total_phase_R = OMEGA_C * tp + phase_R_macro
+        
+
+        s_t_prime = V_I * xp.cos(total_phase_L) - V_Q * xp.sin(total_phase_R)
         
 
         accumulated_I += (2.0 * xp.cos(OMEGA_C * tp) * s_t_prime) * dt_prime
