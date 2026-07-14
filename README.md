@@ -7,8 +7,6 @@
 
 This repository implements the official computing framework and evaluation suite for a container-native quantum simulation platform designed to benchmark the fault-tolerant transport dynamics of **Hilbert-Space Spinor Quasiparticles (HSQ)** under controlled phase-damping decoherence.
 
-By isolating microscopic spinor registers inside lightweight **Docker microservices** under **WSL2** and leveraging **NVIDIA CUDA** parallelization via CuPy, this platform provides a rigorous verification environment to contrast the non-linear HSQ framework against the traditional **Signal-Based Linear Wave Equation (SLWE)** reference baseline through multi-seed discrete Quantum Random Walk (QRW) workflows.
-
 ---
 
 ## 🏗️ System Architecture & Repository Framework
@@ -109,16 +107,6 @@ sudo docker rm -f $(sudo docker ps -a -q)
 
 ---
 
-### Use slwe to computing
-To use slwe to computing, Please enter the following command and ensure slwe_local.py is exist in correct path 
-```bash
-sudo docker build -t slwe-gunicorn-gpu .
-```
-And deploy 1 bits of SLWE 
-```bash
-sudo docker run -d  --name slwe_async_worker  --gpus all  --ipc=host  -p 3000:3000  --restart always  slwe-gunicorn-gpu
-```
-
 ---
 
 ```text
@@ -130,8 +118,7 @@ sudo docker run -d  --name slwe_async_worker  --gpus all  --ipc=host  -p 3000:30
 +-----------------------------------------------------------------+
                                 |
              [ Loopback Restful HTTP API Gateways ]
-     (Port 5011 to 5110: Spawning Scalable Active Qubit Nodes)
-     (Port 6000: Isolated Reference Baseline Channel Allocation)
+     (Port 5011 to N: Spawning Scalable Active Qubit Nodes)
                                 |
                                 v
 +-----------------------------------------------------------------+
@@ -155,8 +142,6 @@ sudo docker run -d  --name slwe_async_worker  --gpus all  --ipc=host  -p 3000:30
 📂 Manifest Mapping & Component Index
 deploy_orchestrator.py: Automated Ecosystem Purge & Cluster Orchestrator. Cleans defunct container clusters, wipes dangling registries, releases bound host OS communication ports, and dynamically scales up to N=100 isolated logical hardware nodes concurrently under native Linux/WSL2 environments.
 random_walk.py: Top-level Execution Controller & Driver. Orchestrates the unified runtime lifecycle across >= 20 independent random seeds. It broadcasts Hadamard coin gates, drives discrete spatiotemporal walk loops, and dynamically collects macro evolution probability streams via Restful endpoints.
-/slwe_backend/slwe_local.py: Classical Linear Wave Reference Model. Implements the multi-qubit classical amplitude signal channel (aligned with Spreeuw 2001 & La Cour 2015/2016 models) running on Port 6000. Serves as the experimental control group to observe the unmitigated phase dispersion.
-/slwe_backend/Dockerfile: Container Infrastructure Manifest. Builds the lightweight Ubuntu-based container environment pre-configured with the official NVIDIA CUDA 11.8.0 runtime to unleash GPU parallel matrix computations.
 /hsq_backend/hsq_qubit.py: Microscopic Simulation Core. The containerized backend application core implementing non-linear mathematical normalization constraints to eliminate numerical dispersion over 500-point spatiotemporal grids.
 /hsq_backend/Dockerfile: Container Infrastructure Manifest. Builds the lightweight Ubuntu-based container environment pre-configured with the official NVIDIA CUDA 11.8.0 runtime to unleash GPU parallel matrix computations.
 ```
@@ -177,12 +162,6 @@ python deploy_orchestrator.py
 Once the backend container matrix is live and ports starting from Port 5011 are bound, open a separate shell and execute the master runtime control script to drive quantum gate injection, perform the 20-seed stress test, and compile the quantitative data:
 ```bash
 python random_walk.py
-```
-This script will output the formal grayscale table_2_noise_stress.png and the 300 DPI publication-grade English spatial wavepacket chart fig2_qrw_ablation_profile.png.
-3. Generate Hardware Scaling Analytics
-To perform live CPU/GPU parallel computing benchmarks and evaluate time complexity scaling curves, execute the benchmarking tool:
-```bash
-python benchmark_scaling.py
 ```
 
 ---
