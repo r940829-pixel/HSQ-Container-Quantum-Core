@@ -135,7 +135,7 @@ class EvolvePayload(BaseModel):
 def route_instruction(payload: InstructionPayload):
     gate_name = payload.gate.lower()
 
-    # --- 1. IBM QISKIT COMPLIANT STATE EXPORT REGISTER ---
+    
     if gate_name == "export_tensor_metric":
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
@@ -155,7 +155,7 @@ def route_instruction(payload: InstructionPayload):
             "state_b": [state_b_real, state_b_imag]
         }
 
-    # --- 2. IBM-ALIGNMENT GENUINE INTER-NODE CONTROLLED PHASE GATE (CPhase/CZ) ---
+    
     elif gate_name == "apply_conditional_phase":
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key or Tensor Bus disconnected")
