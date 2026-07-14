@@ -1,10 +1,3 @@
-# ==============================================================================
-# HILBERT-SPACE SPINOR QUASIPARTICLE (HSQ) COMPUTATIONAL MICROSERVICE
-# [PRODUCTION GRADE - INCREMENTAL TIME ACCUMULATION - VERSION 4.5]
-# Fully optimized to restore multi-step decoherence without altering native xi.
-# Aligns with IBM Qiskit Statevector API standards with dynamic field grid sampling.
-# ==============================================================================
-
 import platform
 import time
 import os
