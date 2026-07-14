@@ -107,8 +107,6 @@ sudo docker rm -f $(sudo docker ps -a -q)
 
 ---
 
----
-
 ```text
 +-----------------------------------------------------------------+
 |            Windows Host (Main Orchestration & Control)          |
