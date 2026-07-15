@@ -13,6 +13,9 @@ except:
 import matplotlib.pyplot as plt
 from scipy import stats
 
+print("======================================================================")
+print("===  WP1 & WP4: Heterogeneous Hardware-Ablation Perfect Driver      ===")
+print("======================================================================")
 
 
 class LiveTargetWalker:
@@ -148,8 +151,12 @@ def align_physical_lattice_via_interpolation(raw_density, discrete_lattice):
 def process_and_pairwise_test(loaded_dict, discrete_lattice, steps, phase_delta, noise_level):
     matrix_store = loaded_dict["matrix_store"]
     
+
     q_ref_A = execute_ibm_qiskit_aer_ground_truth(steps, "A", discrete_lattice, phase_delta, noise_level=noise_level)
     q_ref_B = execute_ibm_qiskit_aer_ground_truth(steps, "B", discrete_lattice, phase_delta, noise_level=noise_level)
+    
+
+    q_ideal_A = execute_ibm_qiskit_aer_ground_truth(steps, "A", discrete_lattice, phase_delta, noise_level=0.0)
     
     configs_meta = [
         ("A", "Config A: Noisy Qiskit Aer Simulator (Baseline)", q_ref_A),
@@ -216,13 +223,16 @@ def process_and_pairwise_test(loaded_dict, discrete_lattice, steps, phase_delta,
     ax3.table(cellText=table_3_rows, colLabels=["Phase Ablation Group", "Wavefront Fidelity (F)", "Total Variation Dist. (D)", "Symmetry Index (S)", "Peak-to-Valley Ratio"], cellLoc='center', loc='center')
     plt.savefig("table_3_metrics.png", dpi=300, bbox_inches='tight'); plt.close()
 
+
     fig_qrw, ax_qrw = plt.subplots(figsize=(10, 5))
-    ax_qrw.bar(discrete_lattice, q_ref_A, width=0.6, color='#2C3E50', alpha=0.25, label='Ideal Noisy IBM Qiskit (Q)')
+
+    ax_qrw.bar(discrete_lattice, q_ideal_A, width=0.6, color='#2C3E50', alpha=0.25, label='Ideal Pure Qiskit (Q)')
     
     raw_A_mean = np.mean([align_physical_lattice_via_interpolation(r, discrete_lattice) for r in matrix_store["A"] if r is not None], axis=0)
     raw_C_mean = np.mean([align_physical_lattice_via_interpolation(r, discrete_lattice) for r in matrix_store["C"] if r is not None], axis=0)
 
-    ax_qrw.step(discrete_lattice, raw_C_mean, where='mid', color='#9B59B6', linewidth=2.0, label='Config C: HSQ Digital Walk')
+
+    ax_qrw.step(discrete_lattice, raw_C_mean, where='mid', color='#9B59B6', linewidth=2.0, label='Config C: HSQ Digital Walk (With Noise)')
     ax_qrw.plot(discrete_lattice, raw_A_mean, color='#E67E22', linestyle='-.', marker='o', markersize=2, alpha=0.8, label='Config A: Noisy Qiskit Baseline')
     ax_qrw.set_xlabel('Discrete Spatial Lattice Site Index (512-Grid Full Range)', fontsize=11, fontname='Times New Roman')
     ax_qrw.set_ylabel('Probability Density P(x)', fontsize=11, fontname='Times New Roman')
@@ -231,7 +241,7 @@ def process_and_pairwise_test(loaded_dict, discrete_lattice, steps, phase_delta,
     ax_qrw.legend(loc='upper right', frameon=True, fontsize=9.5)
     plt.title(f"Quantum Walk Ablation Analysis - Uniform 512-Grid Raw Extraction (Steps: {steps})", fontsize=10, fontweight='bold')
     plt.savefig("fig2_qrw_ablation_profile.png", dpi=300, bbox_inches='tight'); plt.close()
-    print("🏆 [SUCCESS] Full 512-Grid Raw Authentic Ablation Suite secured.")
+    print("🏆 [SUCCESS] Full 512-Grid Raw Authentic Ablation Suite secured with correct Qiskit-Ideal profiling.")
 
 
 if __name__ == "__main__":
@@ -268,6 +278,7 @@ if __name__ == "__main__":
     for seed in range(NUM_SEEDS):
         current_seed = 1000 + seed
         
+
         wf_A = execute_ibm_qiskit_aer_ground_truth(EVOLVE_STEPS, "A", lattice_axis, global_phase_delta, noise_level=target_noise)
         wf_B = execute_ibm_qiskit_aer_ground_truth(EVOLVE_STEPS, "B", lattice_axis, global_phase_delta, noise_level=target_noise)
         wf_C = hsq_single_node.fetch_live_wavefront(EVOLVE_STEPS, "C", current_seed, target_noise, global_phase_delta)
@@ -282,7 +293,6 @@ if __name__ == "__main__":
         matrix_store["D"].append(wf_D) 
         seed_list.append(current_seed)
         print(f" -> Secured Manifest on Seed {current_seed:<4} | Verified Sum ≈ 1.0")
-
 
     try:
         current_script_path = __file__
