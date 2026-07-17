@@ -34,7 +34,7 @@ def clean_environment(clean_hsq=True):
 
 def quick_deploy_network():
     print("====================================================")
-    print("===   HSQ & SLWE Framework: Cluster Orchestrator   ===")
+    print("===   HSQ Framework: Cluster Orchestrator          ===")
     print("====================================================")
     
     # 1. Interactive Pipeline Mode Selector Gateway Interface
@@ -58,16 +58,16 @@ def quick_deploy_network():
     # 3. DYNAMIC CONTAINER ARCHITECTURE PROVISIONING (HSQ LAYER - GPU PASSTHROUGH)
     # ==========================================================================
     
-    # [Architecture Upgrade - Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)
+    # [Architecture Upgrade - Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis key-value store (inter-service messaging))
     if deploy_hsq and n_qubits > 1:
-        print("\n[Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis Entanglement Bus)...")
+        print("\n[Channel 0] Provisioning Virtual Tensor-Channel Switch (Redis key-value store (inter-service messaging))...")
         # Launch lightweight Redis container as cross-node information exchange hub
         redis_cmd = "sudo docker run -d --name hsq_tensor_bus -p 2057:6379 redis:alpine redis-server --maxclients 10000"
         subprocess.run(redis_cmd, shell=True, stdout=subprocess.DEVNULL)
         print("🚀 [Tensor Bus Active] Non-local information exchange channel established on Port 2057.")
 
     if deploy_hsq:
-        print("\n[Channel 1] Provisioning localized container-native HSQ secure topological qubit cluster nodes...")
+        print("\n[Channel 1] Provisioning localized container-native HSQ start HSQ model service containers...")
         hsq_base_port = 5011
         for i in range(n_qubits):
             current_port = hsq_base_port + i
@@ -84,7 +84,7 @@ def quick_deploy_network():
             )
             print(f" -> Mapping Node HSQ-Qubit-{i} (Successfully locked loopback interface Port: {current_port})...")
             subprocess.run(docker_cmd, shell=True, stdout=subprocess.DEVNULL)
-        print("🏆 [Channel 1 Success] All designated HSQ topological manifolds have entered active protective gauge runtime states.")
+        print("🏆 [Channel 1 Success] All HSQ model service containers are up.")
 
     print("\n====================================================")
     print("🎉 [Orchestration Flow Complete] Selected pipelines are now fully live and operational!")
@@ -92,4 +92,3 @@ def quick_deploy_network():
 
 if __name__ == "__main__":
     quick_deploy_network()
-
