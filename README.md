@@ -1,5 +1,15 @@
 # Container-Native Quantum Simulation Platform: Hilbert-Space Spinor Quasiparticle (HSQ) Framework
 
+> **Scope note (read first).** This package studies whether a *closed-form spinor wavepacket model*
+> (HSQ) reproduces discrete-time quantum-walk (DTQW) physics. **It does not.** Measured against a
+> genuine 10-qubit Hadamard-coin DTQW (Qiskit Aer), at zero noise the HSQ model reaches only
+> **~15.7% fidelity** (steps=20; ~14.5% at steps=30), places **>50% of its probability mass outside
+> the DTQW light cone** (where an ideal walk has exactly zero), and yields a **peak-to-valley ratio
+> of 1.00** (peak at the centre) versus ~5.1 for the true ballistic double-horn. This negative result
+> is the finding. The HSQ core (hsq_qubit.py) is deliberately left unmodified: it is the object of
+> study, not a bug to be patched. Reported "disagreement gap" values are **larger = worse** and are
+> NOT fidelities.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Docker Container](https://img.shields.io/badge/docker-WSL2-lightgrey.svg)](https://www.docker.com/)
@@ -111,7 +121,7 @@ sudo docker rm -f $(sudo docker ps -a -q)
 +-----------------------------------------------------------------+
 |            Windows Host (Main Orchestration & Control)          |
 |  - Algorithmic Driver & Data Harvester: random_walk.py          |
-|  - Hardware Scaling & Throughput Profiler: benchmark_scaling.py |
+|  - (no throughput profiler ships with this package)              |
 |  - Dynamic DevOps Pure-Purge Orchestrator: deploy_orchestrator.py
 +-----------------------------------------------------------------+
                                 |
@@ -139,8 +149,8 @@ sudo docker rm -f $(sudo docker ps -a -q)
 ```text
 📂 Manifest Mapping & Component Index
 deploy_orchestrator.py: Automated Ecosystem Purge & Cluster Orchestrator. Cleans defunct container clusters, wipes dangling registries, releases bound host OS communication ports, and dynamically scales up to N=100 isolated logical hardware nodes concurrently under native Linux/WSL2 environments.
-random_walk.py: Top-level Execution Controller & Driver. Orchestrates the unified runtime lifecycle across >= 20 independent random seeds. It broadcasts Hadamard coin gates, drives discrete spatiotemporal walk loops, and dynamically collects macro evolution probability streams via Restful endpoints.
-/hsq_backend/hsq_qubit.py: Microscopic Simulation Core. The containerized backend application core implementing non-linear mathematical normalization constraints to eliminate numerical dispersion over 500-point spatiotemporal grids.
+random_walk.py: Top-level driver. Runs >= 20 seeds against the HSQ backend (NOTE: at noise=0 the closed-form model is deterministic, so those seeds return identical rows -- they are pseudo-replication, not samples), and simulates a genuine 10-qubit Hadamard-coin DTQW in Qiskit Aer to serve BOTH as the ideal reference (noise=0) and as the noisy A/B arms. The coin gate is applied ONCE before the evolution loop; the HSQ backend then advances t and re-evaluates its closed-form field. Scores the HSQ output against the DTQW reference and reports fidelity, total-variation, light-cone leakage and peak-to-valley ratio.
+/hsq_backend/hsq_qubit.py: HSQ model core (the OBJECT OF STUDY -- intentionally unmodified). Evolves a two-component coin amplitude (a,b) and evaluates a CLOSED-FORM two-Gaussian wavepacket |a*exp(-(x+vg*t)^2/2s^2)*e^(i*phL) + b*exp(-(x-vg*t)^2/2s^2)*e^(i*phR)|^2 on a 512-point grid, with s(t)=sqrt(s0^2+alpha*t). It has no position register and no per-step conditional shift, so it is NOT a discrete-time quantum walk; quantifying that gap is the purpose of this study.
 /hsq_backend/Dockerfile: Container Infrastructure Manifest. Builds the lightweight Ubuntu-based container environment pre-configured with the official NVIDIA CUDA 11.8.0 runtime to unleash GPU parallel matrix computations.
 ```
 
