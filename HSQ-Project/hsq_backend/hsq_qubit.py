@@ -76,7 +76,9 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.enforce_gauge_protection()
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
-        """ 🌟 CRYPTOGRAPHIC ENTROPY SEED EXTRACTOR """
+        """ Derives a reproducible RNG seed from SHA-256 of (seed, step, hostname).
+        NOTE: this is seed derivation, not a cryptographic primitive, and it is not
+        a NIST SP 800-22 tested generator. """
         if noise_level <= 0.0:
             return
             
@@ -150,7 +152,7 @@ def route_instruction(payload: InstructionPayload):
             raise HTTPException(status_code=502, detail=f"Tensor Bus write failure: {e}")
         return {
             "status": "success", 
-            "gate": "Export IBM Statevector Telemetry", 
+            "gate": "export HSQ coin amplitudes (a,b) to Redis (not an IBM statevector)", 
             "state_a": [state_a_real, state_a_imag],
             "state_b": [state_b_real, state_b_imag]
         }
@@ -187,7 +189,7 @@ def route_instruction(payload: InstructionPayload):
 
         return {
             "status": "success", 
-            "gate": "Genuine IBM Controlled-Phase Interlock",
+            "gate": "conditional phase (classical if on a measured probability, not entanglement)",
             "interlock_triggered": interlock_triggered,
             "control_node_excitation_density": float(control_excitation_prob),
             "applied_phase_shift": true_unitary_phase,
@@ -247,6 +249,11 @@ def route_ping():
 def route_reset():
     with simulation_lock:
         hsq_qubit.reset_to_vacuum()
+    return {"status": "success", "msg": "HSQ qubit register vacuum-reset successfully"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=5000)
+
     return {"status": "success", "msg": "HSQ qubit register vacuum-reset successfully"}
 
 if __name__ == "__main__":
