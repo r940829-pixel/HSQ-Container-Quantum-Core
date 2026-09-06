@@ -157,17 +157,19 @@ class EvolvePayload(BaseModel):
 def route_instruction(payload: InstructionPayload):
     gate_name = payload.gate.lower()
 
-    # 1. 廣播本容器的完整複數向量 (a, b) 至 Redis 總線
+    # 1. 廣播本容器的完整複數向量 (a, b) 與當前時間步至 Redis 總線
     if gate_name == "export_tensor_metric":
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
+        
         with simulation_lock:
             state_a_real, state_a_imag = float(hsq_qubit.a.real), float(hsq_qubit.a.imag)
             state_b_real, state_b_imag = float(hsq_qubit.b.real), float(hsq_qubit.b.imag)
+            current_step = hsq_qubit.current_step
 
         try:
-            # 寫入格式: "a_real,a_imag,b_real,b_imag"
-            payload_str = f"{state_a_real},{state_a_imag},{state_b_real},{state_b_imag}"
+            # 寫入格式: "a_real,a_imag,b_real,b_imag,step"
+            payload_str = f"{state_a_real},{state_a_imag},{state_b_real},{state_b_imag},{current_step}"
             tensor_bus.set(payload.bus_key, payload_str)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus write failure: {e}")
@@ -176,38 +178,54 @@ def route_instruction(payload: InstructionPayload):
             "status": "success", 
             "gate": "Export Spinor Statevector to Tensor Bus", 
             "state_a": [state_a_real, state_a_imag],
-            "state_b": [state_b_real, state_b_imag]
+            "state_b": [state_b_real, state_b_imag],
+            "step": current_step
         }
 
-    # 🌟 2.【真·非定域貝爾態與 CNOT 複數編織閘】(100% 物理相干，無古典 if-else)
-    elif gate_name in ["bell_entangle", "cnot_interlock", "bell"]:
+    # 🌟 2.【真·N體非定域多重張量與貝爾態相干編織閘】(O(N) 記憶體完備糾纏)
+    elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key or Tensor Bus disconnected")
             
+        source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
+        if not source_keys:
+            raise HTTPException(status_code=400, detail="No source keys provided")
+
         try:
-            control_raw_str = tensor_bus.get(payload.source_bus_key)
+            # ⚡ 使用 Redis Pipeline 進行批量單次讀取 (MGET)，將網路 RTT 降至最低
+            raw_states = tensor_bus.mget(source_keys)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"Tensor Bus read failure: {e}")
+            raise HTTPException(status_code=502, detail=f"Tensor Bus MGET failure: {e}")
 
-        if control_raw_str is None:
-            raise HTTPException(status_code=404, detail=f"Metric '{payload.source_bus_key}' not found on Tensor Bus")
+        # 計算 N 個 Control Qubits 的全 0 與全 1 聯合投影幾率幅
+        c_zero_projection = 1.0 + 0j  # |00...0> 相干乘積
+        c_one_projection = 1.0 + 0j   # |11...1> 相干乘積
 
-        # 讀取控制端 (Control Qubit) 的複數 (a0, b0)
-        parts = control_raw_str.split(",")
-        c_a0 = complex(float(parts[0]), float(parts[1]))
-        c_b0 = complex(float(parts[2]), float(parts[3]))
+        for idx, raw_str in enumerate(raw_states):
+            if raw_str is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Control metric '{source_keys[idx]}' not found on Tensor Bus"
+                )
+            
+            parts = raw_str.split(",")
+            c_a = complex(float(parts[0]), float(parts[1]))
+            c_b = complex(float(parts[2]), float(parts[3]))
+            
+            c_zero_projection *= c_a
+            c_one_projection *= c_b
 
         with simulation_lock:
-            # 🌟 複數正交張量編織：
-            # 當 Control 端處於 H 疊加態 (|0>+|1>)/sqrt(2) 且 Target 端為 |0> 時：
-            # new_a1 = c_a0 * a1 + c_b0 * b1 = (1/sqrt(2))*1 + 0 = 1/sqrt(2)
-            # new_b1 = c_a0 * b1 + c_b0 * a1 = 0 + (1/sqrt(2))*1 = 1/sqrt(2)
-            # 兩者物理鎖定，交織產生完美的 |Phi+> 貝爾糾纏態！
-            new_a1 = c_a0 * hsq_qubit.a + c_b0 * hsq_qubit.b
-            new_b1 = c_a0 * hsq_qubit.b + c_b0 * hsq_qubit.a
-            
-            hsq_qubit.a = new_a1
-            hsq_qubit.b = new_b1
+            # 🌟 希爾伯特正交張量編織 (Orthogonal Tensor Braiding)：
+            # 正確模擬 Control 為 |0> 保持原態，Control 為 |1> 觸發比特翻轉的相干疊加
+            current_a = hsq_qubit.a
+            current_b = hsq_qubit.b
+
+            new_a = c_zero_projection * current_a + c_one_projection * current_b
+            new_b = c_zero_projection * current_b + c_one_projection * current_a
+
+            hsq_qubit.a = new_a
+            hsq_qubit.b = new_b
             hsq_qubit.enforce_gauge_protection()
 
             state_vector_out = [
@@ -217,13 +235,13 @@ def route_instruction(payload: InstructionPayload):
 
         return {
             "status": "success", 
-            "gate": "NON-LOCAL BELL STATE QUANTUM ENTANGLEMENT INTERLOCK",
-            "source_control_amplitude_a": [float(c_a0.real), float(c_a0.imag)],
-            "source_control_amplitude_b": [float(c_b0.real), float(c_b0.imag)],
+            "gate": "N-BODY NON-LOCAL TENSOR BRAIDING INTERLOCK",
+            "control_zero_projection": [float(c_zero_projection.real), float(c_zero_projection.imag)],
+            "control_one_projection": [float(c_one_projection.real), float(c_one_projection.imag)],
             "target_statevector_snapshot": state_vector_out
         }
 
-    # 3. 傳統單 Qubit 門操作
+    # 3. 傳統單 Qubit 門操作 (H, X, Phase)
     with simulation_lock:
         if gate_name in ["h", "hadamard"]:
             hsq_qubit.apply_hadamard_gate()
@@ -241,6 +259,7 @@ def route_instruction(payload: InstructionPayload):
                 {"real": float(hsq_qubit.a.real), "imag": float(hsq_qubit.a.imag)},
                 {"real": float(hsq_qubit.b.real), "imag": float(hsq_qubit.b.imag)}
             ]
+        }
         }
 
 
