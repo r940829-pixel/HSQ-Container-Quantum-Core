@@ -2,6 +2,7 @@
 # HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 5.0]
 # [100% NON-LOCAL COMPLEX AMPLITUDE BRAIDING - NATIVE BELL STATE INTERLOCK]
 # Fully supports Bell Pairs, CNOT Quantum Logic, and Continuous Field Wavepackets.
+# Optimized with O(N) Redis Memory Footprint & Pipeline MGET High-Throughput.
 # ==============================================================================
 
 import os
@@ -34,7 +35,13 @@ TENSOR_BUS_HOST = os.environ.get("TENSOR_BUS_HOST", "localhost")
 TENSOR_BUS_PORT = int(os.environ.get("TENSOR_BUS_PORT", 2057))
 
 try:
-    tensor_bus = redis.Redis(host=TENSOR_BUS_HOST, port=TENSOR_BUS_PORT, db=0, decode_responses=True, socket_timeout=1.0)
+    tensor_bus = redis.Redis(
+        host=TENSOR_BUS_HOST, 
+        port=TENSOR_BUS_PORT, 
+        db=0, 
+        decode_responses=True, 
+        socket_timeout=1.0
+    )
     tensor_bus.ping()
     BUS_CONNECTED = True
     print(f"🔗 [Tensor Bus] Interlocked into Central Switch at {TENSOR_BUS_HOST}:{TENSOR_BUS_PORT}")
@@ -157,7 +164,7 @@ class EvolvePayload(BaseModel):
 def route_instruction(payload: InstructionPayload):
     gate_name = payload.gate.lower()
 
-    # 1. 廣播本容器的完整複數向量 (a, b) 與當前時間步至 Redis 總線
+    # 1. 廣播本容器的完整複數向量 (a, b) 與當前時間步 (Step) 至 Redis 總線
     if gate_name == "export_tensor_metric":
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
@@ -183,7 +190,7 @@ def route_instruction(payload: InstructionPayload):
         }
 
     # 🌟 2.【真·N體非定域多重張量與貝爾態相干編織閘】(O(N) 記憶體完備糾纏)
-    elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle"]:
+    elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle", "cnot_interlock", "bell"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key or Tensor Bus disconnected")
             
@@ -192,12 +199,12 @@ def route_instruction(payload: InstructionPayload):
             raise HTTPException(status_code=400, detail="No source keys provided")
 
         try:
-            # ⚡ 使用 Redis Pipeline 進行批量單次讀取 (MGET)，將網路 RTT 降至最低
+            # ⚡ 使用 Redis Pipeline MGET 批量讀取，極速減少 RTT 往返延遲
             raw_states = tensor_bus.mget(source_keys)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus MGET failure: {e}")
 
-        # 計算 N 個 Control Qubits 的全 0 與全 1 聯合投影幾率幅
+        # 計算所有 Control Qubits 的全 0 與全 1 聯合投影幾率幅
         c_zero_projection = 1.0 + 0j  # |00...0> 相干乘積
         c_one_projection = 1.0 + 0j   # |11...1> 相干乘積
 
@@ -260,7 +267,6 @@ def route_instruction(payload: InstructionPayload):
                 {"real": float(hsq_qubit.b.real), "imag": float(hsq_qubit.b.imag)}
             ]
         }
-        }
 
 
 @app.post("/evolve")
@@ -304,4 +310,3 @@ def route_reset():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)
-
