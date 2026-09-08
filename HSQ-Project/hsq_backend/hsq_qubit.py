@@ -175,7 +175,6 @@ def route_instruction(payload: InstructionPayload):
             current_step = hsq_qubit.current_step
 
         try:
-            # 寫入格式: "a_real,a_imag,b_real,b_imag,step"
             payload_str = f"{state_a_real},{state_a_imag},{state_b_real},{state_b_imag},{current_step}"
             tensor_bus.set(payload.bus_key, payload_str)
         except Exception as e:
@@ -189,7 +188,7 @@ def route_instruction(payload: InstructionPayload):
             "step": current_step
         }
 
-    # 🌟 2.【真·N體非定域多重張量與貝爾態相干編織閘】(O(N) 記憶體完備糾纏)
+    # 🌟 2.【真·N體非定域多重張量與貝爾態相干編織閘】(CNOT / Multi-Control X)
     elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle", "cnot_interlock", "bell"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key or Tensor Bus disconnected")
@@ -199,32 +198,23 @@ def route_instruction(payload: InstructionPayload):
             raise HTTPException(status_code=400, detail="No source keys provided")
 
         try:
-            # ⚡ 使用 Redis Pipeline MGET 批量讀取，極速減少 RTT 往返延遲
             raw_states = tensor_bus.mget(source_keys)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus MGET failure: {e}")
 
-        # 計算所有 Control Qubits 的全 0 與全 1 聯合投影幾率幅
-        c_zero_projection = 1.0 + 0j  # |00...0> 相干乘積
-        c_one_projection = 1.0 + 0j   # |11...1> 相干乘積
+        c_zero_projection = 1.0 + 0j  
+        c_one_projection = 1.0 + 0j   
 
         for idx, raw_str in enumerate(raw_states):
             if raw_str is None:
-                raise HTTPException(
-                    status_code=404, 
-                    detail=f"Control metric '{source_keys[idx]}' not found on Tensor Bus"
-                )
-            
+                raise HTTPException(status_code=404, detail=f"Control metric '{source_keys[idx]}' not found")
             parts = raw_str.split(",")
             c_a = complex(float(parts[0]), float(parts[1]))
             c_b = complex(float(parts[2]), float(parts[3]))
-            
             c_zero_projection *= c_a
             c_one_projection *= c_b
 
         with simulation_lock:
-            # 🌟 希爾伯特正交張量編織 (Orthogonal Tensor Braiding)：
-            # 正確模擬 Control 為 |0> 保持原態，Control 為 |1> 觸發比特翻轉的相干疊加
             current_a = hsq_qubit.a
             current_b = hsq_qubit.b
 
@@ -248,7 +238,58 @@ def route_instruction(payload: InstructionPayload):
             "target_statevector_snapshot": state_vector_out
         }
 
-    # 3. 傳統單 Qubit 門操作 (H, X, Phase)
+    # 🌟 3.【原生受控相位閘 (Native Controlled-Phase Interlock)】
+    elif gate_name in ["cphase", "controlled_phase", "cr"]:
+        if not payload.source_bus_key or not BUS_CONNECTED:
+            raise HTTPException(status_code=400, detail="Missing source_bus_key or Tensor Bus disconnected")
+
+        source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
+        if not source_keys:
+            raise HTTPException(status_code=400, detail="No source keys provided")
+
+        try:
+            raw_states = tensor_bus.mget(source_keys)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Tensor Bus MGET failure: {e}")
+
+        c_zero_projection = 1.0 + 0j
+        c_one_projection = 1.0 + 0j
+
+        for idx, raw_str in enumerate(raw_states):
+            if raw_str is None:
+                raise HTTPException(status_code=404, detail=f"Control metric '{source_keys[idx]}' not found on Tensor Bus")
+            parts = raw_str.split(",")
+            c_a = complex(float(parts[0]), float(parts[1]))
+            c_b = complex(float(parts[2]), float(parts[3]))
+            c_zero_projection *= c_a
+            c_one_projection *= c_b
+
+        with simulation_lock:
+            current_a = hsq_qubit.a
+            current_b = hsq_qubit.b
+            phase_factor = np.exp(1j * payload.delta_phi)
+
+            # CPhase 投影邏輯：Target 的 |0> 永遠不受影響；Target 的 |1> 只有在 Control 為 |1> 時才會旋轉相位
+            new_a = c_zero_projection * current_a + c_one_projection * current_a
+            new_b = c_zero_projection * current_b + c_one_projection * (current_b * phase_factor)
+
+            hsq_qubit.a = new_a
+            hsq_qubit.b = new_b
+            hsq_qubit.enforce_gauge_protection()
+
+            state_vector_out = [
+                {"real": float(hsq_qubit.a.real), "imag": float(hsq_qubit.a.imag)},
+                {"real": float(hsq_qubit.b.real), "imag": float(hsq_qubit.b.imag)}
+            ]
+
+        return {
+            "status": "success", 
+            "gate": "NATIVE CONTROLLED-PHASE INTERLOCK",
+            "delta_phi": payload.delta_phi,
+            "target_statevector_snapshot": state_vector_out
+        }
+
+    # 4. 傳統單 Qubit 門操作 (H, X, Phase)
     with simulation_lock:
         if gate_name in ["h", "hadamard"]:
             hsq_qubit.apply_hadamard_gate()
