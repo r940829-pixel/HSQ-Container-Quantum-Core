@@ -1,6 +1,6 @@
 # ==============================================================================
 # HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 6.0]
-# [TOPOLOGICAL PHASE CHAIN & FULL UNIVERSAL GATE SET ENABLED]
+# [TOPOLOGICAL PHASE CHAIN & FULL UNIVERSAL GATE SET ENABLED - FIXED]
 # Supports: H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, CNOT, CPhase, Phase-Sync.
 # Optimized with O(N) Redis Memory Footprint & Non-Local Phase Chain Interlock.
 # ==============================================================================
@@ -104,55 +104,49 @@ class HilbertSpaceSpinorQuasiparticleService:
         new_a = -1j * self.b
         new_b = 1j * self.a
         self.a, self.b = new_a, new_b
+        self.phase_chain_factor *= -1j
         self.enforce_gauge_protection()
 
     def apply_pauli_z_gate(self):
         self.b = -self.b
+        self.phase_chain_factor *= -1.0
         self.enforce_gauge_protection()
 
     def apply_s_gate(self):
-        """ S Gate (Phase pi/2) """
         self.b = 1j * self.b
+        self.phase_chain_factor *= 1j
         self.enforce_gauge_protection()
 
     def apply_t_gate(self):
-        """ T Gate (Phase pi/4) """
-        self.b = np.exp(1j * np.pi / 4.0) * self.b
+        phase_factor = np.exp(1j * np.pi / 4.0)
+        self.b = phase_factor * self.b
+        self.phase_chain_factor *= phase_factor
         self.enforce_gauge_protection()
 
     def apply_phase_rotation_gate(self, delta_phi):
-        """ Generic Phase Gate (R_z equivalent up to global phase) """
-        self.phi = delta_phi
-        self.b = self.b * np.exp(1j * delta_phi)
-        
-        # 紀錄測量相角到拓樸相位鏈中
-        self.phase_chain_factor *= np.exp(1j * delta_phi)
+        phase_factor = np.exp(1j * delta_phi)
+        self.phi += delta_phi
+        self.b = self.b * phase_factor
+        self.phase_chain_factor *= phase_factor
         self.enforce_gauge_protection()
 
     def apply_rx_gate(self, theta):
-        """ Rotation around X-axis """
         new_a = self.a * np.cos(theta/2) - 1j * self.b * np.sin(theta/2)
         new_b = -1j * self.a * np.sin(theta/2) + self.b * np.cos(theta/2)
         self.a, self.b = new_a, new_b
         self.enforce_gauge_protection()
 
     def apply_ry_gate(self, theta):
-        """ Rotation around Y-axis """
         new_a = self.a * np.cos(theta/2) - self.b * np.sin(theta/2)
         new_b = self.a * np.sin(theta/2) + self.b * np.cos(theta/2)
         self.a, self.b = new_a, new_b
         self.enforce_gauge_protection()
 
     def apply_rz_gate(self, theta):
-        """ Rotation around Z-axis """
         self.a = self.a * np.exp(-1j * theta/2)
         self.b = self.b * np.exp(1j * theta/2)
-        self.phase_chain_factor *= np.exp(1j * theta/2) # 累積相角
+        self.phase_chain_factor *= np.exp(1j * theta/2)
         self.enforce_gauge_protection()
-
-    # ==============================================================
-    # 物理演化與噪聲模型
-    # ==============================================================
 
     def inject_phase_damping(self, noise_level=0.1, seed_val=None):
         if noise_level <= 0.0: return
@@ -195,10 +189,9 @@ class HilbertSpaceSpinorQuasiparticleService:
 
 hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 
-# --- 📋 FastAPI Data Schemas ---
 class InstructionPayload(BaseModel):
     gate: str
-    delta_phi: float = 0.0  # 也作為 Rx, Ry, Rz 的 theta 參數
+    delta_phi: float = 0.0
     bus_key: Optional[str] = None
     source_bus_key: Optional[str] = None
 
@@ -209,12 +202,11 @@ class EvolvePayload(BaseModel):
     grid_size: Optional[int] = 500  
 
 
-# --- 🌐 FastAPI API Routes ---
 @app.post("/instruction")
 def route_instruction(payload: InstructionPayload):
     gate_name = payload.gate.lower()
 
-    # 🌟 1. 導出狀態與拓樸相位鏈
+    # 1. 導出狀態與拓樸相位鏈
     if gate_name == "export_tensor_metric":
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
@@ -226,7 +218,6 @@ def route_instruction(payload: InstructionPayload):
             step = hsq_qubit.current_step
 
         try:
-            # 格式升級: a_real, a_imag, b_real, b_imag, step, phase_chain_real, phase_chain_imag
             payload_str = f"{a_r},{a_i},{b_r},{b_i},{step},{c_r},{c_i}"
             tensor_bus.set(payload.bus_key, payload_str)
         except Exception as e:
@@ -240,7 +231,7 @@ def route_instruction(payload: InstructionPayload):
             "phase_chain": [c_r, c_i]
         }
 
-    # 🌟 2. 拓樸相位鏈同步 (Phase Chain Sync)
+    # 🌟 2. 拓樸相位鏈同步與 Y 基底投影對齊
     elif gate_name in ["sync_phase_chain", "sync_phase"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
@@ -252,22 +243,29 @@ def route_instruction(payload: InstructionPayload):
             raise HTTPException(status_code=502, detail=f"Tensor Bus MGET failure: {e}")
 
         total_remote_phase = 1.0 + 0j
+        valid_count = 0
         for idx, raw_str in enumerate(raw_states):
             if raw_str is None: continue
             parts = raw_str.split(",")
             if len(parts) >= 7:
-                total_remote_phase *= complex(float(parts[5]), float(parts[6]))
+                c_phase = complex(float(parts[5]), float(parts[6]))
+                if np.abs(c_phase) > 1e-15:
+                    total_remote_phase *= c_phase
+                    valid_count += 1
 
-        with simulation_lock:
-            # 將非局域的相位鏈注入本地波函數，彌補獨立 Qubit 的相干丟失
-            hsq_qubit.a *= total_remote_phase
-            hsq_qubit.b *= total_remote_phase
-            hsq_qubit.phase_chain_factor *= total_remote_phase
-            hsq_qubit.enforce_gauge_protection()
+        if valid_count > 0:
+            with simulation_lock:
+                # 🎯 將遠端編織相位直接轉化為相位干涉翻轉
+                phase_angle = np.angle(total_remote_phase)
+                if abs(phase_angle) > 1e-5:
+                    # 進行對角化非局域相位干涉翻轉
+                    hsq_qubit.a, hsq_qubit.b = hsq_qubit.b, -hsq_qubit.a
+                    hsq_qubit.phi += np.pi  # 🌟 補上空間相干波包相角同步
+                    hsq_qubit.enforce_gauge_protection()
 
-        return {"status": "success", "gate": "PHASE CHAIN SYNC", "synced_phase": [total_remote_phase.real, total_remote_phase.imag]}
+        return {"status": "success", "gate": "RELATIVE PHASE CHAIN SYNC"}
 
-    # 3. N體非定域多重張量編織 (CNOT)
+    # 3. N體非定域多重張量編織 (CNOT) - 增加相位鏈連鎖記錄
     elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle", "cnot_interlock", "bell"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
@@ -278,18 +276,21 @@ def route_instruction(payload: InstructionPayload):
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus failure: {e}")
 
-        c_zero = 1.0 + 0j  
-        c_one = 1.0 + 0j   
+        c_zero, c_one = 1.0 + 0j, 1.0 + 0j
+        remote_phase_chain = 1.0 + 0j
         for idx, raw_str in enumerate(raw_states):
             if raw_str is None: continue
             parts = raw_str.split(",")
             c_zero *= complex(float(parts[0]), float(parts[1]))
             c_one *= complex(float(parts[2]), float(parts[3]))
+            if len(parts) >= 7:
+                remote_phase_chain *= complex(float(parts[5]), float(parts[6]))
 
         with simulation_lock:
             new_a = c_zero * hsq_qubit.a + c_one * hsq_qubit.b
             new_b = c_zero * hsq_qubit.b + c_one * hsq_qubit.a
             hsq_qubit.a, hsq_qubit.b = new_a, new_b
+            hsq_qubit.phase_chain_factor *= remote_phase_chain  # 吸收 Control 端相位鏈
             hsq_qubit.enforce_gauge_protection()
 
         return {"status": "success", "gate": "CNOT INTERLOCK"}
@@ -317,11 +318,12 @@ def route_instruction(payload: InstructionPayload):
             new_a = c_zero * hsq_qubit.a + c_one * hsq_qubit.a
             new_b = c_zero * hsq_qubit.b + c_one * (hsq_qubit.b * phase_f)
             hsq_qubit.a, hsq_qubit.b = new_a, new_b
+            hsq_qubit.phase_chain_factor *= phase_f
             hsq_qubit.enforce_gauge_protection()
 
         return {"status": "success", "gate": "CPHASE INTERLOCK"}
 
-    # 🌟 5. 單 Qubit 通用邏輯閘 (Universal Single Qubit Gates)
+    # 5. 單 Qubit 通用邏輯閘
     with simulation_lock:
         if gate_name in ["h", "hadamard"]:
             hsq_qubit.apply_hadamard_gate()
@@ -383,7 +385,7 @@ def route_ping():
     return {
         "status": "ready",
         "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
-        "version": "6.0 (Topological Phase Chain)",
+        "version": "6.0 (Topological Phase Chain - Fixed)",
         "cuda_accelerated": HAS_GPU,
         "tensor_bus_active": BUS_CONNECTED
     }
