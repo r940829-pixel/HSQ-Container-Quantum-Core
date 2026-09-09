@@ -315,7 +315,7 @@ def route_instruction(payload: InstructionPayload):
 
         with simulation_lock:
             phase_f = np.exp(1j * payload.delta_phi)
-            new_a = c_zero * hsq_qubit.a + c_one * hsq_qubit.a
+            new_a = (c_zero + c_one) * hsq_qubit.a
             new_b = c_zero * hsq_qubit.b + c_one * (hsq_qubit.b * phase_f)
             hsq_qubit.a, hsq_qubit.b = new_a, new_b
             hsq_qubit.phase_chain_factor *= phase_f
@@ -400,3 +400,4 @@ def route_reset():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)
+
