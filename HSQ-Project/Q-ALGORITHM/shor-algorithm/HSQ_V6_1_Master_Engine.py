@@ -29,7 +29,7 @@ if hasattr(sys, 'set_int_max_str_digits'):
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
-SERVER_IP  = os.environ.get("HSQ_SERVER_IP", "192.168.0.20")
+SERVER_IP  = os.environ.get("HSQ_SERVER_IP", "127.0.0.1")
 BASE_PORT  = int(os.environ.get("HSQ_BASE_PORT", 5011))
 REDIS_PORT = int(os.environ.get("TENSOR_BUS_PORT", 2057))
 
