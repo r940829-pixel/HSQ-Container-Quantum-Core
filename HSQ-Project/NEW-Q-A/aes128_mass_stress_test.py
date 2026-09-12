@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-SERVER_IP = "192.168.0.20"
+SERVER_IP = "127.0.0.1"
 BASE_PORT = 5011
 NODE_COUNT = 16  # 16 顆 HSQ 節點 (Port 5011 ~ 5026)
 NODE_PORTS = [BASE_PORT + i for i in range(NODE_COUNT)]
