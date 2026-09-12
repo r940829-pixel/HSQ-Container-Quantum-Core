@@ -169,7 +169,7 @@ python deploy_orchestrator.py
 2. Launch Algorithmic Simulation Pipeline
 Once the backend container matrix is live and ports starting from Port 5011 are bound, open a separate shell and execute the master runtime control script to drive quantum gate injection, perform the 20-seed stress test, and compile the quantitative data:
 ```bash
-python random_walk.py --seeds 20 --steps 20 --noise 0.00
+python random_walk.py --seeds 20 --steps 20 --noise 0.00 --phase 0.05 --target-ip 127.0.0.1 --port 5011
 
 ```
 
