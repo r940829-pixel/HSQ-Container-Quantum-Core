@@ -4,7 +4,7 @@ import requests
 import numpy as np
 
 # 🌐 設定 N 顆 HSQ 容器節點的 Base URL (例如 N=4, 5, 6...)
-BASE_IP = "192.168.0.20"
+BASE_IP = "127.0.0.1"
 START_PORT = 5011
 
 def get_node_urls(n_qubits: int):
@@ -127,4 +127,4 @@ def execute_mermin_n_qubits(n_qubits: int):
 
 if __name__ == "__main__":
     # 可直接測試 N = 4 顆容器的 GHZ 糾纏態
-    execute_mermin_n_qubits(n_qubits=4)
+    execute_mermin_n_qubits(n_qubits=5)
