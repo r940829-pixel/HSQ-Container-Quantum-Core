@@ -1,7 +1,8 @@
 # ==============================================================================
-# HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 6.0]
+# HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 6.5]
 # [TOPOLOGICAL PHASE CHAIN & FULL UNIVERSAL GATE SET ENABLED - FIXED]
 # Supports: H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, CNOT, CPhase, Phase-Sync.
+# EXTENDED: CH, CY, CZ, CS, CT, CRx, CRy, CRz, CSync_phase.
 # Optimized with O(N) Redis Memory Footprint & Non-Local Phase Chain Interlock.
 # ==============================================================================
 
@@ -27,7 +28,7 @@ except ImportError:
     xp = np
     HAS_GPU = False
 
-app = FastAPI(title="HSQ Quantum Emulator Node - Version 6.0 (Phase Chain & Universal Gates)")
+app = FastAPI(title="HSQ Quantum Emulator Node - Version 6.5 (Extended Controlled Gates)")
 simulation_lock = threading.Lock()
 
 # --- 🌐 Central Interlock Redis Tensor Switch Connection ---
@@ -62,14 +63,14 @@ class HilbertSpaceSpinorQuasiparticleService:
         self.k_R = -1.2
         self.sigma = 2.0    
         self.vg = 0.8       
-        self.alpha = 0.1    
+        self.alpha = 0.0    
         self.current_step = 0
         self.a = 1.0 + 0j   # Ground State |0>
         self.b = 0.0 + 0j   # Excited State |1>
-        
+
         # 🌟 拓樸相位鏈記憶體 (Topological Phase Chain Memory)
         self.phase_chain_factor = 1.0 + 0j
-        
+
         self.theta = 0.0
         self.phi = 0.0
         self.k_delta = 0.0  
@@ -89,7 +90,7 @@ class HilbertSpaceSpinorQuasiparticleService:
     # ==============================================================
     # 🌟 UNIVERSAL QUANTUM GATE SET (通用量子邏輯閘實作)
     # ==============================================================
-    
+
     def apply_hadamard_gate(self):
         new_a = (1.0 / np.sqrt(2)) * (self.a + self.b)
         new_b = (1.0 / np.sqrt(2)) * (self.a - self.b)
@@ -170,16 +171,16 @@ class HilbertSpaceSpinorQuasiparticleService:
         envelope_a = xp.exp(-((x_grid + self.vg * t)**2) / (2 * current_sigma**2))
         envelope_b = xp.exp(-((x_grid - self.vg * t)**2) / (2 * current_sigma**2))
         time_phase = self.omega_0 * t
-        
+
         phase_L = (self.k_L - self.k_delta) * x_grid + time_phase
         phase_R = (self.k_R - self.k_delta) * x_grid + time_phase + self.phi
-        
+
         xi_total = self.a * envelope_a * xp.exp(1j * phase_L) + self.b * envelope_b * xp.exp(1j * phase_R)
         prob = xp.abs(xi_total)**2
-        
+
         total_sum = float(xp.sum(prob))
         if total_sum > 0: prob = prob / total_sum
-            
+
         if HAS_GPU:
             result = cp.asnumpy(prob).astype(float).tolist()
             cp.get_default_memory_pool().free_all_blocks()  
@@ -210,7 +211,7 @@ def route_instruction(payload: InstructionPayload):
     if gate_name == "export_tensor_metric":
         if not payload.bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing bus_key or Tensor Bus disconnected")
-        
+
         with simulation_lock:
             a_r, a_i = float(hsq_qubit.a.real), float(hsq_qubit.a.imag)
             b_r, b_i = float(hsq_qubit.b.real), float(hsq_qubit.b.imag)
@@ -222,7 +223,7 @@ def route_instruction(payload: InstructionPayload):
             tensor_bus.set(payload.bus_key, payload_str)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus write failure: {e}")
-            
+
         return {
             "status": "success", 
             "gate": "Export Spinor & Phase Chain to Tensor Bus", 
@@ -235,7 +236,7 @@ def route_instruction(payload: InstructionPayload):
     elif gate_name in ["sync_phase_chain", "sync_phase"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
-        
+
         source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
         try:
             raw_states = tensor_bus.mget(source_keys)
@@ -269,7 +270,7 @@ def route_instruction(payload: InstructionPayload):
     elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle", "cnot_interlock", "bell"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
-            
+
         source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
         try:
             raw_states = tensor_bus.mget(source_keys)
@@ -323,7 +324,105 @@ def route_instruction(payload: InstructionPayload):
 
         return {"status": "success", "gate": "CPHASE INTERLOCK"}
 
-    # 5. 單 Qubit 通用邏輯閘
+    # 🚀 5. 擴充受控量子邏輯閘 (Extended Controlled Gates)
+    elif gate_name in ["ch", "cy", "cz", "cs", "ct", "crx", "cry", "crz", "csync_phase"]:
+        if not payload.source_bus_key or not BUS_CONNECTED:
+            raise HTTPException(status_code=400, detail="Missing source_bus_key")
+
+        source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
+        try:
+            raw_states = tensor_bus.mget(source_keys)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Tensor Bus failure: {e}")
+
+        c_zero, c_one = 1.0 + 0j, 1.0 + 0j
+        total_remote_phase = 1.0 + 0j
+        for idx, raw_str in enumerate(raw_states):
+            if raw_str is None: continue
+            parts = raw_str.split(",")
+            c_zero *= complex(float(parts[0]), float(parts[1]))
+            c_one *= complex(float(parts[2]), float(parts[3]))
+            if len(parts) >= 7:
+                c_phase = complex(float(parts[5]), float(parts[6]))
+                if np.abs(c_phase) > 1e-15:
+                    total_remote_phase *= c_phase
+
+        with simulation_lock:
+            a, b = hsq_qubit.a, hsq_qubit.b
+            theta = payload.delta_phi
+            
+            # 以機率為基礎的相位插值權重
+            p_zero = np.abs(c_zero)**2
+            p_one = np.abs(c_one)**2
+
+            if gate_name == "ch":
+                op_a = (a + b) / np.sqrt(2)
+                op_b = (a - b) / np.sqrt(2)
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                
+            elif gate_name == "cy":
+                op_a = -1j * b
+                op_b = 1j * a
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.phase_chain_factor *= (-1j * p_one + 1.0 * p_zero)
+
+            elif gate_name == "cz":
+                op_a = a
+                op_b = -b
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.phase_chain_factor *= (-1.0 * p_one + 1.0 * p_zero)
+
+            elif gate_name == "cs":
+                op_a = a
+                op_b = 1j * b
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.phase_chain_factor *= (1j * p_one + 1.0 * p_zero)
+
+            elif gate_name == "ct":
+                phase_t = np.exp(1j * np.pi / 4.0)
+                op_a = a
+                op_b = phase_t * b
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.phase_chain_factor *= (phase_t * p_one + 1.0 * p_zero)
+
+            elif gate_name == "crx":
+                op_a = a * np.cos(theta/2) - 1j * b * np.sin(theta/2)
+                op_b = -1j * a * np.sin(theta/2) + b * np.cos(theta/2)
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+
+            elif gate_name == "cry":
+                op_a = a * np.cos(theta/2) - b * np.sin(theta/2)
+                op_b = a * np.sin(theta/2) + b * np.cos(theta/2)
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+
+            elif gate_name == "crz":
+                op_a = a * np.exp(-1j * theta/2)
+                op_b = b * np.exp(1j * theta/2)
+                hsq_qubit.a = c_zero * a + c_one * op_a
+                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.phase_chain_factor *= (np.exp(1j * theta/2) * p_one + 1.0 * p_zero)
+
+            elif gate_name == "csync_phase":
+                phase_angle = np.angle(total_remote_phase)
+                if abs(phase_angle) > 1e-5:
+                    op_a = b
+                    op_b = -a
+                    hsq_qubit.a = c_zero * a + c_one * op_a
+                    hsq_qubit.b = c_zero * b + c_one * op_b
+                    hsq_qubit.phi += np.pi * p_one  # 依 Control 端激發態機率注入空間相位
+            
+            hsq_qubit.enforce_gauge_protection()
+
+        return {"status": "success", "gate": gate_name.upper() + " INTERLOCK"}
+
+    # 6. 單 Qubit 通用邏輯閘
     with simulation_lock:
         if gate_name in ["h", "hadamard"]:
             hsq_qubit.apply_hadamard_gate()
@@ -370,7 +469,7 @@ def route_evolve(payload: EvolvePayload):
         hsq_qubit.inject_phase_damping(payload.noise, seed_val=payload.seed)
         prob_dist = hsq_qubit.compute_current_xi(grid_size=active_grid)
         integrity = float(np.abs(hsq_qubit.a)**2 + np.abs(hsq_qubit.b)**2)
-        
+
     return {
         "status": "evolved",
         "t_final": hsq_qubit.t_accumulated,
@@ -385,7 +484,7 @@ def route_ping():
     return {
         "status": "ready",
         "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
-        "version": "6.0 (Topological Phase Chain - Fixed)",
+        "version": "6.5 (Extended Controlled Gates & Phase Chain Interlock)",
         "cuda_accelerated": HAS_GPU,
         "tensor_bus_active": BUS_CONNECTED
     }
@@ -400,4 +499,3 @@ def route_reset():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)
-
