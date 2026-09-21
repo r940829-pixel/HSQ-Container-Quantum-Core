@@ -1,6 +1,6 @@
 # ==============================================================================
-# HSQ V6.3 TOPOLOGICAL SHOR MASTER ENGINE (TRUE KICKBACK & SHOTS EDITION)
-# Fixed: Directional CPhase Kickback aligned with HSQ V6.0 Spinor Mechanics.
+# HSQ V6.5 TOPOLOGICAL SHOR MASTER ENGINE (ANALYTIC & ALIGNMENT RESET EDITION)
+# Fixed: Zero Shot-Noise Analytics + Target Phase Alignment Reset + O(N) Interlock.
 # ==============================================================================
 
 import os
@@ -10,8 +10,6 @@ import math
 import secrets
 import logging
 import json
-import hashlib
-import platform
 from typing import List, Dict, Any, Optional, Set, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from fractions import Fraction
@@ -21,7 +19,6 @@ import redis
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import psutil
 
 if hasattr(sys, 'set_int_max_str_digits'):
     sys.set_int_max_str_digits(100000)
@@ -32,34 +29,36 @@ SERVER_IP  = os.environ.get("HSQ_SERVER_IP", "127.0.0.1")
 BASE_PORT  = int(os.environ.get("HSQ_BASE_PORT", 5011))
 REDIS_PORT = int(os.environ.get("TENSOR_BUS_PORT", 2057))
 
-DISCOVERY_TIMEOUT = 8.0
-EXECUTION_TIMEOUT = 8.0
+DISCOVERY_TIMEOUT = 5.0
+EXECUTION_TIMEOUT = 5.0
 MAX_RETRY_COUNT   = 3
 MAX_CONCURRENT_WORKERS = 64
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 class UniversalHSQShorMasterEngine:
-    def __init__(self, target_M: int, target_org: str = "Quantum Evaluation Board", shots: int = 2000, max_trials: int = 10):
+    def __init__(self, target_M: int, target_org: str = "Quantum Evaluation Board", max_trials: int = 10):
         self.M = int(target_M)
         self.target_org = target_org
-        self.shots = shots
         self.max_trials = max_trials
+        
+        # 根據大數 M 位元長度，動態計算 Control 與 Target 節點數
         self.L_target = self.M.bit_length()
         self.t_control = 2 * self.L_target
-        self.total_nodes_needed = self.t_control + self.L_target
+        self.total_nodes_needed = self.t_control + 1  # 拓樸映射僅需 1 顆 Target 節點
+        
         self.tested_coprimes: Set[int] = set()
         self.start_wall_time = time.time()
-        self.trial_history = []
 
         logging.info("====================================================================")
-        logging.info("   HSQ V6.3 SHOR MASTER ENGINE (TRUE KICKBACK & SHOTS)              ")
+        logging.info("   HSQ V6.5 SHOR MASTER ENGINE (ANALYTIC INTERFEROMETRY EDITION)   ")
         logging.info("====================================================================")
         logging.info(f"👉 Target Integer (M) : {self.M}")
-        logging.info(f"👉 Reg1 (Control)     : {self.t_control} Nodes")
-        logging.info(f"👉 Reg2 (Target)      : {self.L_target} Nodes")
-        logging.info(f"👉 Born Rule Shots    : {self.shots} Shots per trial")
+        logging.info(f"👉 Reg1 (Control)     : {self.t_control} Nodes (Resolution: 1/{2**self.t_control})")
+        logging.info(f"👉 Reg2 (Target)      : 1 Node (HSQ Phase Topological Mapper)")
+        logging.info(f"👉 Observation Mode   : Pure Native Geometric Metric Projection (Zero Shots)")
         
+        # 連接 Redis Switch 匯流排
         try:
             self.redis_bus = redis.Redis(host=SERVER_IP, port=REDIS_PORT, db=0, decode_responses=True, socket_timeout=2.0)
             self.redis_bus.ping()
@@ -67,19 +66,21 @@ class UniversalHSQShorMasterEngine:
             logging.error(f"❌ Redis Switch Connection Error: {e}")
             sys.exit(1)
 
+        # 高併發 HTTP 連線池建立
         self.http_session = requests.Session()
         retry_strategy = Retry(total=MAX_RETRY_COUNT, backoff_factor=0.02, status_forcelist=[500, 502, 503, 504])
         adapter = HTTPAdapter(pool_connections=MAX_CONCURRENT_WORKERS, pool_maxsize=MAX_CONCURRENT_WORKERS, max_retries=retry_strategy)
         self.http_session.mount('http://', adapter)
 
+        # 自動探測 HSQ 節點 Ports
         self.active_ports = self._discover_hsq_nodes()
         if len(self.active_ports) < self.total_nodes_needed:
             logging.error(f"❌ Active Nodes ({len(self.active_ports)}) < Required ({self.total_nodes_needed})")
             sys.exit(1)
 
         self.reg1_ports = self.active_ports[:self.t_control]
-        self.reg2_ports = self.active_ports[self.t_control:self.total_nodes_needed]
-        logging.info(f"✅ HSQ Nodes Ready. Reg1: {self.reg1_ports[0]}~{self.reg1_ports[-1]} | Reg2: {self.reg2_ports[0]}~{self.reg2_ports[-1]}")
+        self.target_port = self.active_ports[self.t_control]
+        logging.info(f"✅ HSQ Nodes Ready. Control Ports: {self.reg1_ports[0]}~{self.reg1_ports[-1]} | Target Port: {self.target_port}")
 
     def _discover_hsq_nodes(self) -> List[int]:
         def probe(port):
@@ -93,9 +94,9 @@ class UniversalHSQShorMasterEngine:
         with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_WORKERS) as executor:
             return [p for p in executor.map(probe, list(range(BASE_PORT, BASE_PORT + max_ports))) if p is not None]
 
-    def _post_single(self, port: int, endpoint: str, payload: dict) -> Optional[dict]:
+    def _post_single(self, port: int, endpoint: str, payload: dict = None) -> Optional[dict]:
         try:
-            return self.http_session.post(f"http://{SERVER_IP}:{port}/{endpoint}", json=payload, timeout=EXECUTION_TIMEOUT).json()
+            return self.http_session.post(f"http://{SERVER_IP}:{port}/{endpoint}", json=payload or {}, timeout=EXECUTION_TIMEOUT).json()
         except: return None
 
     def _post_parallel(self, ports: List[int], endpoint: str, payload_builder_func) -> List[Optional[dict]]:
@@ -138,34 +139,42 @@ class UniversalHSQShorMasterEngine:
         logging.info(f"   🚀 TRIAL #{trial_num} / {self.max_trials} | Generator a = {a_generator}")
         logging.info(f"====================================================================")
 
-        all_used_ports = self.reg1_ports + self.reg2_ports
+        all_used_ports = self.reg1_ports + [self.target_port]
         self._post_parallel(all_used_ports, "reset", lambda i, p: {})
         
-        self._post_single(self.reg2_ports[-1], "instruction", {"gate": "x"})
+        # 1. 準備 Control (H門) 與 Target (|1>態)
         self._post_parallel(self.reg1_ports, "instruction", lambda i, p: {"gate": "h"})
+        self._post_single(self.target_port, "instruction", {"gate": "x"})
 
         # ====================================================================
-        # Phase 1: 🌟 修正版 - 物理相位反衝 (True Phase Kickback)
+        # Phase 1: 🌟 拓樸場 Phase Kickback (帶 Alignment Reset 重置機制)
         # ====================================================================
-        target_bus = f"hsq_v63_reg2_t{trial_num}"
-        # 導出 Reg2 最後一顆 (態為|1>) 的狀態作為相角注入源
-        self._post_single(self.reg2_ports[-1], "instruction", {"gate": "export_tensor_metric", "bus_key": target_bus})
-
+        logging.info("⚛️ Injecting Phase Kickback with Target Phase Alignment Reset...")
+        
         for j, reg1_port in enumerate(self.reg1_ports):
-            mod_power = pow(a_generator, 2**j, self.M)
-            phase_angle = float((2.0 * np.pi * mod_power) / self.M)
+            target_bus = f"shor_t{trial_num}_q{j}"
+            # 廣播 Target |1> 態特徵 Metric
+            self._post_single(self.target_port, "instruction", {"gate": "export_tensor_metric", "bus_key": target_bus})
 
-            # 【核心修復】對 Reg1 (Control) 下指令，讓它吃進 Target 的相位！
+            # 計算模冪項映射角度: a^(2^j) mod M
+            mod_val = pow(a_generator, 2**j, self.M)
+            phase_angle = float(2.0 * np.pi * (mod_val / self.M))
+
+            # 雙向 Kickback: 對 Control Node 施加相角
             self._post_single(reg1_port, "instruction", {
                 "gate": "cphase", 
                 "delta_phi": phase_angle, 
                 "source_bus_key": target_bus
             })
 
+            # 🌟 重點修正：清除 Target 波包殘留相角，防止下一階位元退相干
+            self._post_single(self.target_port, "reset")
+            self._post_single(self.target_port, "instruction", {"gate": "x"})
+
         # ====================================================================
-        # Phase 2: 真·逆量子傅立葉變換 (IQFT)
+        # Phase 2: 真·逆量子傅立葉變換 (IQFT) 拓樸干涉
         # ====================================================================
-        logging.info("⚛️ Executing True Dynamic IQFT Topology...")
+        logging.info("⚛️ Executing Dynamic IQFT Topology...")
         for i in range(self.t_control - 1, -1, -1):
             port_i = self.reg1_ports[i]
             for j in range(self.t_control - 1, i, -1):
@@ -175,58 +184,63 @@ class UniversalHSQShorMasterEngine:
                 self._post_single(port_j, "instruction", {"gate": "export_tensor_metric", "bus_key": bus_key_j})
                 iqft_angle = -np.pi / (2 ** (j - i))
                 
-                # IQFT 內部拓樸：i 被 j 控制。這是正確的方向。
                 self._post_single(port_i, "instruction", {"gate": "cphase", "delta_phi": iqft_angle, "source_bus_key": bus_key_j})
             
+            # H 門旋轉導出軸向干涉
             self._post_single(port_i, "instruction", {"gate": "h"})
 
         # ====================================================================
-        # Phase 3: 波恩法則 Shots 坍縮統計 (Monte Carlo Sampling)
+        # Phase 3: 幾何干涉 Spinor 投影解析 (Zero Shot-Noise Analytics)
         # ====================================================================
+        logging.info("📊 Reading Native Geometric Spinor Metrics...")
+        analytic_bits = []
         probabilities = []
-        for port in self.reg1_ports:
-            res = self._post_single(port, "instruction", {"gate": "export_tensor_metric", "bus_key": "measure_tmp_v63"})
+
+        for i, port in enumerate(self.reg1_ports):
+            res = self._post_single(port, "instruction", {"gate": "export_tensor_metric", "bus_key": f"final_meas_q{i}"})
             if res and "state_b" in res:
                 prob_1 = np.clip(res["state_b"][0]**2 + res["state_b"][1]**2, 0.0, 1.0)
                 probabilities.append(prob_1)
+                analytic_bits.append("1" if prob_1 > 0.5 else "0")
             else:
                 probabilities.append(0.0)
+                analytic_bits.append("0")
 
-        results_histogram = {}
-        rng = secrets.SystemRandom()
-        for _ in range(self.shots):
-            shot_bits = "".join(["1" if rng.random() < p else "0" for p in probabilities])
-            results_histogram[shot_bits] = results_histogram.get(shot_bits, 0) + 1
+        # 解算十進位相位 theta
+        theta_est = 0.0
+        for idx, bit in enumerate(analytic_bits):
+            if bit == "1":
+                theta_est += 1.0 / (2 ** (idx + 1))
 
-        top_candidates = sorted(results_histogram.items(), key=lambda x: x[1], reverse=True)[:5]
-        
-        logging.info(f"🎯 [QPE Measurement] Executed {self.shots} Shots. Top Candidates:")
-        for state, count in top_candidates:
-            logging.info(f"  ├─ State |{state}> : {count} hits ({count/self.shots*100:.1f}%)")
+        bitstring = "".join(analytic_bits)
+        logging.info(f"  ├─ Geometric Bitstring : 0.{bitstring}")
+        logging.info(f"  └─ Derived Phase (θ)   : {theta_est:.10f}")
 
         # ====================================================================
-        # Phase 4: 多重共振峰值週期尋找
+        # Phase 4: 古典連分數與質因數求解
         # ====================================================================
-        for state, count in top_candidates:
-            y_int = int(state, 2)
-            theta_phase = y_int / (2**self.t_control)
-            if theta_phase == 0.0: continue
+        if theta_est == 0.0:
+            logging.warning("⚠️ Phase is 0.0, retrying with another generator...")
+            return "FAILURE_ZERO_PHASE", a_generator, None, None, None, None
 
-            frac = Fraction(theta_phase).limit_denominator(self.M - 1)
-            raw_r = frac.denominator
-            r_period = self._validate_and_refine_period(a_generator, raw_r)
+        frac = Fraction(theta_est).limit_denominator(self.M)
+        raw_r = frac.denominator
+        r_period = self._validate_and_refine_period(a_generator, raw_r)
 
-            if r_period and r_period % 2 == 0:
-                half_power = pow(a_generator, r_period // 2, self.M)
-                if half_power != self.M - 1 and half_power != 1:
-                    factor_1 = math.gcd(half_power - 1, self.M)
-                    factor_2 = self.M // factor_1
-                    if 1 < factor_1 < self.M:
-                        trial_duration = time.time() - trial_start
-                        logging.info(f"🏆 [SUCCESS] Target peak |{state}> yielded r={r_period}. Factored {self.M} = {factor_1} * {factor_2}")
-                        return "SUCCESS", a_generator, r_period, theta_phase, factor_1, factor_2
+        if r_period and r_period % 2 == 0:
+            half_power = pow(a_generator, r_period // 2, self.M)
+            if half_power != self.M - 1 and half_power != 1:
+                factor_1 = math.gcd(half_power - 1, self.M)
+                factor_2 = self.M // factor_1
+                if 1 < factor_1 < self.M:
+                    trial_duration = time.time() - trial_start
+                    logging.info("====================================================================")
+                    logging.info(f"🏆 [SUCCESS] Factored {self.M} = {factor_1} * {factor_2}")
+                    logging.info(f"⏱️ Trial Duration : {trial_duration * 1000:.2f} ms")
+                    logging.info("====================================================================")
+                    return "SUCCESS", a_generator, r_period, theta_est, factor_1, factor_2
 
-        logging.warning("⚠️ All top 5 peaks failed to yield a valid non-trivial factor. Retrying...")
+        logging.warning("⚠️ Could not yield a valid non-trivial factor. Retrying...")
         return "FAILURE_NO_VALID_PEAK", a_generator, None, None, None, None
 
     def execute_shor_factorization(self):
@@ -238,13 +252,13 @@ class UniversalHSQShorMasterEngine:
 
 if __name__ == "__main__":
     print("====================================================================")
-    print("===  HSQ V6.3 SHOR FACTORIZATION MASTER (TRUE KICKBACK)          ===")
+    print("===   HSQ V6.5 SHOR FACTORIZATION MASTER (ANALYTIC EDITION)       ===")
     print("====================================================================")
     try:
-        user_in = input("👉 Enter target integer to factorize (e.g., 15, 35, 43873): ").strip()
+        user_in = input("👉 Enter target integer to factorize (e.g., 15, 21, 35): ").strip()
         target = int(user_in)
     except Exception:
         sys.exit(1)
 
-    master = UniversalHSQShorMasterEngine(target_M=target, shots=2000)
+    master = UniversalHSQShorMasterEngine(target_M=target)
     master.execute_shor_factorization()
