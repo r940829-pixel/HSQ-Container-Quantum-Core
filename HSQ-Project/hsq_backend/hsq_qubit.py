@@ -1,8 +1,9 @@
 # ==============================================================================
-# HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 6.5]
-# [TOPOLOGICAL PHASE CHAIN & FULL UNIVERSAL GATE SET ENABLED - FIXED]
-# Supports: H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, CNOT, CPhase, Phase-Sync.
-# EXTENDED: CH, CY, CZ, CS, CT, CRx, CRy, CRz, CSync_phase.
+# HILBERT SPACE SPINOR QUASIPARTICLE (HSQ) QUANTUM EMULATOR NODE [VERSION 7.0]
+# [THE FINAL PUZZLE - COMPLETE UNIVERSAL TENSOR SET ENABLED]
+# Supports Single: H, X, Y, Z, S, T, Rx, Ry, Rz, Phase, U
+# Supports 2-Qubit: CNOT, CPhase, Phase-Sync, SWAP, CH, CY, CZ, CS, CT, CRx, CRy, CRz, CU, CSync_phase
+# Supports 3-Qubit: CCNOT (Toffoli), CSWAP (Fredkin)
 # Optimized with O(N) Redis Memory Footprint & Non-Local Phase Chain Interlock.
 # ==============================================================================
 
@@ -28,7 +29,7 @@ except ImportError:
     xp = np
     HAS_GPU = False
 
-app = FastAPI(title="HSQ Quantum Emulator Node - Version 6.5 (Extended Controlled Gates)")
+app = FastAPI(title="HSQ Quantum Emulator Node - Version 7.0 (Complete Universal Tensor Set)")
 simulation_lock = threading.Lock()
 
 # --- 🌐 Central Interlock Redis Tensor Switch Connection ---
@@ -90,6 +91,13 @@ class HilbertSpaceSpinorQuasiparticleService:
     # ==============================================================
     # 🌟 UNIVERSAL QUANTUM GATE SET (通用量子邏輯閘實作)
     # ==============================================================
+
+    def apply_u_gate(self, theta, phi, lam):
+        """ 萬用單量子閘 U(theta, phi, lambda) """
+        op_a = self.a * np.cos(theta/2) - self.b * np.exp(1j * lam) * np.sin(theta/2)
+        op_b = self.a * np.exp(1j * phi) * np.sin(theta/2) + self.b * np.exp(1j * (phi + lam)) * np.cos(theta/2)
+        self.a, self.b = op_a, op_b
+        self.enforce_gauge_protection()
 
     def apply_hadamard_gate(self):
         new_a = (1.0 / np.sqrt(2)) * (self.a + self.b)
@@ -192,7 +200,9 @@ hsq_qubit = HilbertSpaceSpinorQuasiparticleService()
 
 class InstructionPayload(BaseModel):
     gate: str
-    delta_phi: float = 0.0
+    delta_phi: float = 0.0          # Maps to theta for U/CU gates
+    phi_angle: float = 0.0          # Maps to phi for U/CU gates
+    lambda_angle: float = 0.0       # Maps to lambda for U/CU gates
     bus_key: Optional[str] = None
     source_bus_key: Optional[str] = None
 
@@ -256,76 +266,75 @@ def route_instruction(payload: InstructionPayload):
 
         if valid_count > 0:
             with simulation_lock:
-                # 🎯 將遠端編織相位直接轉化為相位干涉翻轉
                 phase_angle = np.angle(total_remote_phase)
                 if abs(phase_angle) > 1e-5:
-                    # 進行對角化非局域相位干涉翻轉
                     hsq_qubit.a, hsq_qubit.b = hsq_qubit.b, -hsq_qubit.a
-                    hsq_qubit.phi += np.pi  # 🌟 補上空間相干波包相角同步
+                    hsq_qubit.phi += np.pi  
                     hsq_qubit.enforce_gauge_protection()
 
         return {"status": "success", "gate": "RELATIVE PHASE CHAIN SYNC"}
 
-    # 3. N體非定域多重張量編織 (CNOT) - 增加相位鏈連鎖記錄
-    elif gate_name in ["multi_tensor_interlock", "tensor_product", "bell_entangle", "cnot_interlock", "bell"]:
+    # 🚀 3. 三體高階糾纏閘 (3-Qubit Interlock: CCNOT, CSWAP)
+    elif gate_name in ["ccnot", "toffoli", "cswap", "fredkin"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
-
+            
         source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
+        if len(source_keys) < 2:
+            raise HTTPException(status_code=400, detail="CCNOT/CSWAP requires exactly 2 remote tensor keys")
+            
         try:
-            raw_states = tensor_bus.mget(source_keys)
+            raw_states = tensor_bus.mget(source_keys[:2])
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tensor Bus failure: {e}")
+            
+        node1 = raw_states[0].split(",") if raw_states[0] else None
+        node2 = raw_states[1].split(",") if raw_states[1] else None
+        
+        if not node1 or not node2:
+            raise HTTPException(status_code=502, detail="Incomplete remote tensor data for 3-qubit gate")
 
-        c_zero, c_one = 1.0 + 0j, 1.0 + 0j
-        remote_phase_chain = 1.0 + 0j
-        for idx, raw_str in enumerate(raw_states):
-            if raw_str is None: continue
-            parts = raw_str.split(",")
-            c_zero *= complex(float(parts[0]), float(parts[1]))
-            c_one *= complex(float(parts[2]), float(parts[3]))
-            if len(parts) >= 7:
-                remote_phase_chain *= complex(float(parts[5]), float(parts[6]))
-
-        with simulation_lock:
-            new_a = c_zero * hsq_qubit.a + c_one * hsq_qubit.b
-            new_b = c_zero * hsq_qubit.b + c_one * hsq_qubit.a
-            hsq_qubit.a, hsq_qubit.b = new_a, new_b
-            hsq_qubit.phase_chain_factor *= remote_phase_chain  # 吸收 Control 端相位鏈
-            hsq_qubit.enforce_gauge_protection()
-
-        return {"status": "success", "gate": "CNOT INTERLOCK"}
-
-    # 4. 受控相位閘 (CPhase)
-    elif gate_name in ["cphase", "controlled_phase", "cr"]:
-        if not payload.source_bus_key or not BUS_CONNECTED:
-            raise HTTPException(status_code=400, detail="Missing source_bus_key")
-
-        source_keys = [k.strip() for k in payload.source_bus_key.split(",") if k.strip()]
-        try:
-            raw_states = tensor_bus.mget(source_keys)
-        except Exception as e:
-            raise HTTPException(status_code=502, detail=f"Tensor Bus failure: {e}")
-
-        c_zero, c_one = 1.0 + 0j, 1.0 + 0j
-        for idx, raw_str in enumerate(raw_states):
-            if raw_str is None: continue
-            parts = raw_str.split(",")
-            c_zero *= complex(float(parts[0]), float(parts[1]))
-            c_one *= complex(float(parts[2]), float(parts[3]))
+        # 控制節點 1 的狀態
+        c1_0 = complex(float(node1[0]), float(node1[1]))
+        c1_1 = complex(float(node1[2]), float(node1[3]))
+        # 控制/目標節點 2 的狀態
+        c2_0 = complex(float(node2[0]), float(node2[1]))
+        c2_1 = complex(float(node2[2]), float(node2[3]))
 
         with simulation_lock:
-            phase_f = np.exp(1j * payload.delta_phi)
-            new_a = (c_zero + c_one) * hsq_qubit.a
-            new_b = c_zero * hsq_qubit.b + c_one * (hsq_qubit.b * phase_f)
-            hsq_qubit.a, hsq_qubit.b = new_a, new_b
-            hsq_qubit.phase_chain_factor *= phase_f
+            a, b = hsq_qubit.a, hsq_qubit.b
+            
+            if gate_name in ["ccnot", "toffoli"]:
+                # 只有當兩個 Control 都是 |1> 時才翻轉
+                c_11 = c1_1 * c2_1
+                c_rest = c1_0 * c2_0 + c1_0 * c2_1 + c1_1 * c2_0
+                
+                hsq_qubit.a = c_rest * a + c_11 * b
+                hsq_qubit.b = c_rest * b + c_11 * a
+                
+                remote_phase = 1.0 + 0j
+                if len(node1) >= 7: remote_phase *= complex(float(node1[5]), float(node1[6]))
+                if len(node2) >= 7: remote_phase *= complex(float(node2[5]), float(node2[6]))
+                p_11 = np.abs(c_11)**2
+                hsq_qubit.phase_chain_factor *= (remote_phase * p_11 + 1.0 * (1 - p_11))
+
+            elif gate_name in ["cswap", "fredkin"]:
+                # node1 = Control, node2 = Target2. 若 Control=|1>，本節點與 Target2 狀態交換
+                hsq_qubit.a = c1_0 * a + c1_1 * c2_0
+                hsq_qubit.b = c1_0 * b + c1_1 * c2_1
+                
+                remote_phase = 1.0 + 0j
+                if len(node1) >= 7: remote_phase *= complex(float(node1[5]), float(node1[6]))
+                if len(node2) >= 7: remote_phase *= complex(float(node2[5]), float(node2[6]))
+                hsq_qubit.phase_chain_factor *= (remote_phase * np.abs(c1_1)**2 + 1.0 * np.abs(c1_0)**2)
+                
             hsq_qubit.enforce_gauge_protection()
 
-        return {"status": "success", "gate": "CPHASE INTERLOCK"}
+        return {"status": "success", "gate": gate_name.upper() + " INTERLOCK"}
 
-    # 🚀 5. 擴充受控量子邏輯閘 (Extended Controlled Gates)
-    elif gate_name in ["ch", "cy", "cz", "cs", "ct", "crx", "cry", "crz", "csync_phase"]:
+    # 🚀 4. 多體與受控雙量子閘 (2-Qubit Interlock: CNOT, CPhase, CH, CU, SWAP, etc.)
+    elif gate_name in ["multi_tensor_interlock", "tensor_product", "cnot_interlock", "bell", "cnot",
+                       "cphase", "controlled_phase", "cr", "ch", "cy", "cz", "cs", "ct", "crx", "cry", "crz", "cu", "swap", "csync_phase"]:
         if not payload.source_bus_key or not BUS_CONNECTED:
             raise HTTPException(status_code=400, detail="Missing source_bus_key")
 
@@ -350,12 +359,27 @@ def route_instruction(payload: InstructionPayload):
         with simulation_lock:
             a, b = hsq_qubit.a, hsq_qubit.b
             theta = payload.delta_phi
-            
-            # 以機率為基礎的相位插值權重
             p_zero = np.abs(c_zero)**2
             p_one = np.abs(c_one)**2
 
-            if gate_name == "ch":
+            if gate_name == "swap":
+                # 完全繼承遠端節點狀態與相位（實體系統中，遠端也需要向本節點執行一次 SWAP 呼叫）
+                hsq_qubit.a = c_zero
+                hsq_qubit.b = c_one
+                hsq_qubit.phase_chain_factor = total_remote_phase
+
+            elif gate_name in ["cnot", "cnot_interlock", "bell", "multi_tensor_interlock"]:
+                hsq_qubit.a = c_zero * a + c_one * b
+                hsq_qubit.b = c_zero * b + c_one * a
+                hsq_qubit.phase_chain_factor *= total_remote_phase
+
+            elif gate_name in ["cphase", "controlled_phase", "cr"]:
+                phase_f = np.exp(1j * theta)
+                hsq_qubit.a = (c_zero + c_one) * a
+                hsq_qubit.b = c_zero * b + c_one * (b * phase_f)
+                hsq_qubit.phase_chain_factor *= phase_f
+
+            elif gate_name == "ch":
                 op_a = (a + b) / np.sqrt(2)
                 op_b = (a - b) / np.sqrt(2)
                 hsq_qubit.a = c_zero * a + c_one * op_a
@@ -369,26 +393,28 @@ def route_instruction(payload: InstructionPayload):
                 hsq_qubit.phase_chain_factor *= (-1j * p_one + 1.0 * p_zero)
 
             elif gate_name == "cz":
-                op_a = a
-                op_b = -b
-                hsq_qubit.a = c_zero * a + c_one * op_a
-                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.a = c_zero * a + c_one * a
+                hsq_qubit.b = c_zero * b - c_one * b
                 hsq_qubit.phase_chain_factor *= (-1.0 * p_one + 1.0 * p_zero)
 
             elif gate_name == "cs":
-                op_a = a
-                op_b = 1j * b
-                hsq_qubit.a = c_zero * a + c_one * op_a
-                hsq_qubit.b = c_zero * b + c_one * op_b
+                hsq_qubit.a = c_zero * a + c_one * a
+                hsq_qubit.b = c_zero * b + c_one * (1j * b)
                 hsq_qubit.phase_chain_factor *= (1j * p_one + 1.0 * p_zero)
 
             elif gate_name == "ct":
                 phase_t = np.exp(1j * np.pi / 4.0)
-                op_a = a
-                op_b = phase_t * b
+                hsq_qubit.a = c_zero * a + c_one * a
+                hsq_qubit.b = c_zero * b + c_one * (phase_t * b)
+                hsq_qubit.phase_chain_factor *= (phase_t * p_one + 1.0 * p_zero)
+
+            elif gate_name == "cu":
+                lam = payload.lambda_angle
+                phi_ang = payload.phi_angle
+                op_a = a * np.cos(theta/2) - b * np.exp(1j * lam) * np.sin(theta/2)
+                op_b = a * np.exp(1j * phi_ang) * np.sin(theta/2) + b * np.exp(1j * (phi_ang + lam)) * np.cos(theta/2)
                 hsq_qubit.a = c_zero * a + c_one * op_a
                 hsq_qubit.b = c_zero * b + c_one * op_b
-                hsq_qubit.phase_chain_factor *= (phase_t * p_one + 1.0 * p_zero)
 
             elif gate_name == "crx":
                 op_a = a * np.cos(theta/2) - 1j * b * np.sin(theta/2)
@@ -412,17 +438,15 @@ def route_instruction(payload: InstructionPayload):
             elif gate_name == "csync_phase":
                 phase_angle = np.angle(total_remote_phase)
                 if abs(phase_angle) > 1e-5:
-                    op_a = b
-                    op_b = -a
-                    hsq_qubit.a = c_zero * a + c_one * op_a
-                    hsq_qubit.b = c_zero * b + c_one * op_b
-                    hsq_qubit.phi += np.pi * p_one  # 依 Control 端激發態機率注入空間相位
+                    hsq_qubit.a = c_zero * a + c_one * b
+                    hsq_qubit.b = c_zero * b - c_one * a
+                    hsq_qubit.phi += np.pi * p_one  
             
             hsq_qubit.enforce_gauge_protection()
 
         return {"status": "success", "gate": gate_name.upper() + " INTERLOCK"}
 
-    # 6. 單 Qubit 通用邏輯閘
+    # 🚀 5. 單 Qubit 通用邏輯閘 (Single Qubit Local Gates)
     with simulation_lock:
         if gate_name in ["h", "hadamard"]:
             hsq_qubit.apply_hadamard_gate()
@@ -436,6 +460,8 @@ def route_instruction(payload: InstructionPayload):
             hsq_qubit.apply_s_gate()
         elif gate_name == "t":
             hsq_qubit.apply_t_gate()
+        elif gate_name == "u":
+            hsq_qubit.apply_u_gate(payload.delta_phi, payload.phi_angle, payload.lambda_angle)
         elif gate_name in ["rx"]:
             hsq_qubit.apply_rx_gate(payload.delta_phi)
         elif gate_name in ["ry"]:
@@ -484,7 +510,7 @@ def route_ping():
     return {
         "status": "ready",
         "device": "NVIDIA GPU Hardware Acceleration Direct Access Mode" if HAS_GPU else "CPU Simulation Mode",
-        "version": "6.5 (Extended Controlled Gates & Phase Chain Interlock)",
+        "version": "7.0 (The Final Puzzle - Complete Universal Tensor Set)",
         "cuda_accelerated": HAS_GPU,
         "tensor_bus_active": BUS_CONNECTED
     }
