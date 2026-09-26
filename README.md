@@ -10,6 +10,9 @@
 > study, not a bug to be patched. Reported "disagreement gap" values are **larger = worse** and are
 > NOT fidelities.
 
+
+If you find this project useful, please contact me at the following email address.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Docker Container](https://img.shields.io/badge/docker-WSL2-lightgrey.svg)](https://www.docker.com/)
@@ -171,6 +174,13 @@ Once the backend container matrix is live and ports starting from Port 5011 are 
 ```bash
 python random_walk.py --seeds 20 --steps 20 --noise 0.00 --phase 0.05 --target-ip 127.0.0.1 --port 5011
 
+```
+
+---
+
+Contact Information(Email address)
+```bash
+r940829@gmail.com
 ```
 
 ---
